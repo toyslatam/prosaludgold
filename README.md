@@ -1,4 +1,4 @@
-# Dental One Vision
+# ProSalud Gold
 
 Aplicación web para la gestión integral de clínicas dentales. Incluye landing de producto y un dashboard con módulos de agenda, pacientes, atención clínica, caja, inventario, laboratorios, reportes y más.
 
@@ -10,8 +10,8 @@ Aplicación web para la gestión integral de clínicas dentales. Incluye landing
 
 ```bash
 # Clonar el repositorio
-git clone <URL_DEL_REPOSITORIO>
-cd dental-one-vision
+git clone https://github.com/SoporteCT/prosaludgold.git
+cd prosaludgold
 
 # Instalar dependencias
 npm install

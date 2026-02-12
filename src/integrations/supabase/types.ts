@@ -7,14 +7,318 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          branch: string
+          created_at: string
+          date: string
+          doctor_id: string
+          duration: number
+          id: string
+          patient_id: string
+          reason: string | null
+          status: Database["public"]["Enums"]["appointment_status"]
+          time: string
+          updated_at: string
+        }
+        Insert: {
+          branch: string
+          created_at?: string
+          date: string
+          doctor_id: string
+          duration?: number
+          id?: string
+          patient_id: string
+          reason?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"]
+          time: string
+          updated_at?: string
+        }
+        Update: {
+          branch?: string
+          created_at?: string
+          date?: string
+          doctor_id?: string
+          duration?: number
+          id?: string
+          patient_id?: string
+          reason?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"]
+          time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          description: string
+          id: string
+          method: string | null
+          patient_id: string | null
+          type: Database["public"]["Enums"]["cash_entry_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          method?: string | null
+          patient_id?: string | null
+          type: Database["public"]["Enums"]["cash_entry_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          method?: string | null
+          patient_id?: string | null
+          type?: Database["public"]["Enums"]["cash_entry_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_entries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctors: {
+        Row: {
+          available: boolean
+          branch: string
+          created_at: string
+          id: string
+          name: string
+          specialty: string
+          updated_at: string
+        }
+        Insert: {
+          available?: boolean
+          branch: string
+          created_at?: string
+          id?: string
+          name: string
+          specialty: string
+          updated_at?: string
+        }
+        Update: {
+          available?: boolean
+          branch?: string
+          created_at?: string
+          id?: string
+          name?: string
+          specialty?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          min_stock: number
+          name: string
+          stock: number
+          supplier: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          min_stock?: number
+          name: string
+          stock?: number
+          supplier?: string | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          min_stock?: number
+          name?: string
+          stock?: number
+          supplier?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lab_orders: {
+        Row: {
+          cost: number
+          created_at: string
+          date: string
+          doctor_id: string
+          id: string
+          lab: string
+          patient_id: string
+          status: Database["public"]["Enums"]["lab_order_status"]
+          updated_at: string
+          work: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          date: string
+          doctor_id: string
+          id?: string
+          lab: string
+          patient_id: string
+          status?: Database["public"]["Enums"]["lab_order_status"]
+          updated_at?: string
+          work: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          date?: string
+          doctor_id?: string
+          id?: string
+          lab?: string
+          patient_id?: string
+          status?: Database["public"]["Enums"]["lab_order_status"]
+          updated_at?: string
+          work?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_orders_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          balance: number
+          birth_date: string | null
+          cedula: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_visit: string | null
+          name: string
+          next_appointment: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          birth_date?: string | null
+          cedula?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_visit?: string | null
+          name: string
+          next_appointment?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          birth_date?: string | null
+          cedula?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_visit?: string | null
+          name?: string
+          next_appointment?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      treatments: {
+        Row: {
+          cost: number
+          created_at: string
+          date: string
+          id: string
+          name: string
+          paid: number
+          patient_id: string
+          status: Database["public"]["Enums"]["treatment_status"]
+          updated_at: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          date: string
+          id?: string
+          name: string
+          paid?: number
+          patient_id: string
+          status?: Database["public"]["Enums"]["treatment_status"]
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          paid?: number
+          patient_id?: string
+          status?: Database["public"]["Enums"]["treatment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +327,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      appointment_status:
+        | "pendiente"
+        | "confirmada"
+        | "en_sala"
+        | "atendida"
+        | "no_asistio"
+      cash_entry_type: "ingreso" | "egreso"
+      lab_order_status: "solicitado" | "en_proceso" | "recibido" | "entregado"
+      treatment_status: "pendiente" | "en_curso" | "completado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +462,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      appointment_status: [
+        "pendiente",
+        "confirmada",
+        "en_sala",
+        "atendida",
+        "no_asistio",
+      ],
+      cash_entry_type: ["ingreso", "egreso"],
+      lab_order_status: ["solicitado", "en_proceso", "recibido", "entregado"],
+      treatment_status: ["pendiente", "en_curso", "completado"],
+    },
   },
 } as const
