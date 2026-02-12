@@ -14,8 +14,8 @@ const Configuracion = () => (
       <div>
         <h2 className="font-semibold mb-4">Datos de la clínica</h2>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Input defaultValue="Dental One Panamá" />
-          <Input defaultValue="info@dentalonepanama.com" />
+          <Input defaultValue="ProSalud Gold" />
+          <Input defaultValue="info@prosaludgold.com" />
           <Input defaultValue="+507 300-0000" />
           <Input defaultValue="Ciudad de Panamá" />
         </div>

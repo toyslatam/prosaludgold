@@ -22,10 +22,8 @@ const LandingHeader = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">D1</span>
-          </div>
-          <span className="font-bold text-lg text-foreground">Dental One <span className="text-primary">Panamá</span></span>
+          <img src="/logoprosaludgold.ico" alt="ProSalud Gold" className="w-8 h-8 rounded-lg object-contain" />
+          <span className="font-bold text-lg text-foreground">ProSalud <span className="text-primary">Gold</span></span>
         </Link>
 
         <nav className="hidden lg:flex items-center gap-6">

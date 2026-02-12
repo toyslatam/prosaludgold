@@ -123,7 +123,7 @@ const ModulesSection = () => {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Módulos de Dental One</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Módulos de ProSalud Gold</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Cada módulo fue diseñado para resolver las necesidades reales de clínicas dentales en Panamá.
           </p>

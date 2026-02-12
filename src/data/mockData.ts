@@ -1,4 +1,4 @@
-// Mock data for Dental One Panamá demo
+// Mock data for ProSalud Gold demo
 
 export interface Appointment {
   id: string;

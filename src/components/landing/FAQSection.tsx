@@ -2,13 +2,13 @@ import { motion } from "framer-motion";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const faqs = [
-  { q: "¿Necesito instalar algo en mi computadora?", a: "No. Dental One funciona 100% en la nube. Solo necesitas un navegador web y conexión a Internet." },
-  { q: "¿Puedo usar Dental One desde mi celular?", a: "Sí. La plataforma es completamente responsive y funciona desde cualquier dispositivo: computadora, tablet o celular." },
+  { q: "¿Necesito instalar algo en mi computadora?", a: "No. ProSalud Gold funciona 100% en la nube. Solo necesitas un navegador web y conexión a Internet." },
+  { q: "¿Puedo usar ProSalud Gold desde mi celular?", a: "Sí. La plataforma es completamente responsive y funciona desde cualquier dispositivo: computadora, tablet o celular." },
   { q: "¿Mis datos están seguros?", a: "Tus datos se almacenan en servidores seguros con encriptación de extremo a extremo y respaldos automáticos diarios. Cumplimos con estándares de seguridad internacionales." },
   { q: "¿Puedo migrar mis datos desde otro sistema?", a: "Sí. Ofrecemos herramientas de carga masiva y acompañamiento para migrar tus pacientes, historiales y datos financieros desde otros sistemas." },
   { q: "¿Qué incluye el soporte?", a: "Todos los planes incluyen soporte técnico. Los planes Pro y Clínica cuentan con soporte prioritario y acompañamiento en la implementación." },
   { q: "¿Puedo empezar con un plan básico y crecer después?", a: "¡Por supuesto! Puedes cambiar de plan en cualquier momento sin perder tus datos." },
-  { q: "¿Dental One funciona para múltiples sucursales?", a: "Sí. Los planes Pro y Clínica permiten gestionar múltiples sedes con reportes consolidados y permisos por sucursal." },
+  { q: "¿ProSalud Gold funciona para múltiples sucursales?", a: "Sí. Los planes Pro y Clínica permiten gestionar múltiples sedes con reportes consolidados y permisos por sucursal." },
   { q: "¿Puedo personalizar los roles y permisos?", a: "Sí. Puedes crear roles personalizados (Admin, Recepción, Doctor, Caja, Inventario) y asignar permisos específicos por módulo y sucursal." },
 ];
 

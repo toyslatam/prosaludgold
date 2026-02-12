@@ -79,9 +79,6 @@ export function AppointmentForm({
   onEnviarConfirmacion,
   isEdit = false,
 }: AppointmentFormProps) {
-  const patientId = form.watch("patientId");
-  const selectedPatient = patientId ? patients.find((p) => p.id === patientId) ?? null : initial?.patient ?? null;
-
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -101,6 +98,9 @@ export function AppointmentForm({
       notes: initial?.notes ?? "",
     },
   });
+
+  const patientId = form.watch("patientId");
+  const selectedPatient = patientId ? patients.find((p) => p.id === patientId) ?? null : initial?.patient ?? null;
 
   const handleSubmit = form.handleSubmit((values) => {
     const patient = patients.find((p) => p.id === values.patientId);
