@@ -10,7 +10,7 @@ Aplicación web para la gestión integral de clínicas dentales. Incluye landing
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/SoporteCT/prosaludgold.git
+git clone https://github.com/toyslatam/prosaludgold.git
 cd prosaludgold
 
 # Instalar dependencias
