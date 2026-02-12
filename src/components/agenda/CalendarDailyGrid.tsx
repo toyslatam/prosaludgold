@@ -1,4 +1,5 @@
-import { statusColors, statusLabels } from "@/data/mockData";
+import { useMemo } from "react";
+import { statusColors } from "@/data/mockData";
 import type { AppointmentWithDetails } from "@/types/agenda";
 import { MessageCircle, Mail, Pin, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,9 +7,12 @@ import { cn } from "@/lib/utils";
 const SLOT_HEIGHT = 56;
 const START_HOUR = 8;
 const END_HOUR = 20;
+const MINUTES_PER_SLOT = 30;
 
 function timeToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number);
+  const parts = t.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parts[1] ? parseInt(parts[1], 10) : 0;
   return h * 60 + m;
 }
 
@@ -22,6 +26,55 @@ function generateTimeSlots(): string[] {
 }
 
 const TIME_SLOTS = generateTimeSlots();
+
+/** Calcula top (px) y height (px) según hora de inicio y duración en una grilla continua */
+function getBlockStyle(apt: AppointmentWithDetails) {
+  const startMinutes = timeToMinutes(apt.time);
+  const dayStartMinutes = START_HOUR * 60;
+  const topPx = ((startMinutes - dayStartMinutes) / MINUTES_PER_SLOT) * SLOT_HEIGHT + 2;
+  const heightPx = Math.max((apt.duration / MINUTES_PER_SLOT) * SLOT_HEIGHT - 4, 28);
+  return { topPx, heightPx, startMinutes, endMinutes: startMinutes + apt.duration };
+}
+
+/** Detecta solapamientos y asigna a cada cita un "lane" (0, 1, 2...) para mostrarlas en columnas sin apilar */
+function assignLanes(appointments: AppointmentWithDetails[]): Map<string, { lane: number; totalLanes: number }> {
+  const result = new Map<string, { lane: number; totalLanes: number }>();
+  const withStyle = appointments.map((apt) => ({ apt, ...getBlockStyle(apt) }));
+  const sorted = [...withStyle].sort((a, b) => a.startMinutes - b.startMinutes);
+
+  for (const { apt, startMinutes, endMinutes } of sorted) {
+    const overlapping = withStyle.filter(
+      (o) => o.apt.id !== apt.id && o.startMinutes < endMinutes && o.endMinutes > startMinutes,
+    );
+    const usedLanes = new Set(
+      overlapping.map((o) => result.get(o.apt.id)?.lane).filter((l): l is number => l !== undefined),
+    );
+    let lane = 0;
+    while (usedLanes.has(lane)) lane++;
+    result.set(apt.id, { lane, totalLanes: lane + 1 });
+  }
+
+  // Segundo pase: que todos los que se solapan compartan el mismo totalLanes (el máximo del grupo)
+  const allIds = withStyle.map((w) => w.apt.id);
+  for (const id of allIds) {
+    const w = withStyle.find((x) => x.apt.id === id)!;
+    const overlapping = withStyle.filter(
+      (o) => o.apt.id !== id && o.startMinutes < w.endMinutes && o.endMinutes > w.startMinutes,
+    );
+    const current = result.get(id)!;
+    const maxTotal = [current.totalLanes, ...overlapping.map((o) => result.get(o.apt.id)!.totalLanes)].reduce(
+      (a, b) => Math.max(a, b),
+      1,
+    );
+    result.set(id, { lane: current.lane, totalLanes: maxTotal });
+    overlapping.forEach((o) => {
+      const cur = result.get(o.apt.id)!;
+      if (cur.totalLanes < maxTotal) result.set(o.apt.id, { lane: cur.lane, totalLanes: maxTotal });
+    });
+  }
+
+  return result;
+}
 
 interface CalendarDailyGridProps {
   date: string; // YYYY-MM-DD
@@ -38,7 +91,8 @@ export function CalendarDailyGrid({
   onSelectSlot,
   className,
 }: CalendarDailyGridProps) {
-  const dayAppointments = appointments.filter((a) => a.date === date);
+  const dayAppointments = useMemo(() => appointments.filter((a) => a.date === date), [appointments, date]);
+  const lanesMap = useMemo(() => assignLanes(dayAppointments), [dayAppointments]);
 
   return (
     <div className={cn("bg-card rounded-xl border border-border shadow-card overflow-hidden", className)}>
@@ -67,18 +121,30 @@ export function CalendarDailyGrid({
             />
           ))}
           {dayAppointments.map((apt) => {
-            const slotIndex = TIME_SLOTS.indexOf(apt.time);
-            if (slotIndex === -1) return null;
-            const top = slotIndex * SLOT_HEIGHT + 2;
-            const height = Math.max((apt.duration / 30) * SLOT_HEIGHT - 4, 28);
+            const { topPx, heightPx } = getBlockStyle(apt);
+            const laneInfo = lanesMap.get(apt.id);
+            const totalLanes = laneInfo?.totalLanes ?? 1;
+            const lane = laneInfo?.lane ?? 0;
+            const gapPx = 4;
+            const marginPx = 8;
+
             return (
               <div
                 key={apt.id}
                 className={cn(
-                  "absolute left-2 right-2 rounded-lg p-2 border text-xs cursor-pointer transition-shadow hover:shadow-md",
+                  "absolute rounded-lg p-2 border text-xs cursor-pointer transition-shadow hover:shadow-md",
                   statusColors[apt.status],
                 )}
-                style={{ top: `${top}px`, height: `${height}px` }}
+                style={{
+                  top: `${topPx}px`,
+                  height: `${heightPx}px`,
+                  ...(totalLanes > 1
+                    ? {
+                        left: `calc(${marginPx}px + ${lane} * ((100% - ${2 * marginPx}px - ${(totalLanes - 1) * gapPx}px) / ${totalLanes} + ${gapPx}px))`,
+                        width: `calc((100% - ${2 * marginPx}px - ${(totalLanes - 1) * gapPx}px) / ${totalLanes})`,
+                      }
+                    : { left: `${marginPx}px`, right: `${marginPx}px` }),
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectAppointment(apt);
