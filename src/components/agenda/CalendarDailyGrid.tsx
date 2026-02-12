@@ -150,18 +150,20 @@ export function CalendarDailyGrid({
                   onSelectAppointment(apt);
                 }}
               >
-                <p className="font-semibold truncate">{apt.patientName}</p>
-                <p className="truncate opacity-90 text-[11px]">{apt.doctorName}</p>
-                <p className="truncate opacity-75 text-[11px]">{apt.reason}</p>
-                <div className="flex gap-1 mt-1 flex-wrap">
-                  {apt.confirmations.whatsapp && <MessageCircle className="h-3 w-3 shrink-0" />}
-                  {apt.confirmations.email && <Mail className="h-3 w-3 shrink-0" />}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-h-0 h-full">
+                  <span className="font-semibold shrink-0">{apt.patientName}</span>
+                  <span className="opacity-90 text-[11px] shrink-0">{apt.doctorName}</span>
+                  <span className="opacity-75 text-[11px] min-w-0 truncate">{apt.reason}</span>
                   {apt.chairName && (
-                    <span className="inline-flex items-center gap-0.5">
+                    <span className="inline-flex items-center gap-0.5 text-[11px] shrink-0">
                       <Pin className="h-3 w-3" /> {apt.chairName}
                     </span>
                   )}
-                  {apt.situation === "deuda" && <AlertCircle className="h-3 w-3 text-destructive shrink-0" />}
+                  <span className="inline-flex items-center gap-1 ml-auto shrink-0">
+                    {apt.confirmations.whatsapp && <MessageCircle className="h-3 w-3" />}
+                    {apt.confirmations.email && <Mail className="h-3 w-3" />}
+                    {apt.situation === "deuda" && <AlertCircle className="h-3 w-3 text-destructive" />}
+                  </span>
                 </div>
               </div>
             );
