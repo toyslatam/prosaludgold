@@ -17,6 +17,7 @@ interface AppointmentDrawerProps {
   nextAppointmentByPatientId?: Record<string, string>;
   defaultDate?: string;
   defaultTime?: string;
+  defaultPatientId?: string;
   onSave: (values: AppointmentFormValues, patient: PatientRow) => void;
   onAnular: (id: string, motivo?: string) => void;
   onNoAsiste: (id: string) => void;
@@ -35,6 +36,7 @@ export function AppointmentDrawer({
   nextAppointmentByPatientId,
   defaultDate,
   defaultTime,
+  defaultPatientId,
   onSave,
   onAnular,
   onNoAsiste,
@@ -42,7 +44,11 @@ export function AppointmentDrawer({
   onEnviarConfirmacion,
   onViewPatient,
 }: AppointmentDrawerProps) {
-  const patient = appointment ? patients.find((p) => p.id === appointment.patientId) : null;
+  const patient = appointment
+    ? patients.find((p) => p.id === appointment.patientId)
+    : defaultPatientId
+      ? patients.find((p) => p.id === defaultPatientId) ?? null
+      : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -133,6 +139,11 @@ export function AppointmentDrawer({
             </>
           ) : (
             <AppointmentForm
+              initial={
+                defaultPatientId && patient
+                  ? { patientId: defaultPatientId, patient }
+                  : undefined
+              }
               doctors={doctors}
               chairs={chairs}
               patients={patients}

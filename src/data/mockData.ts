@@ -24,6 +24,18 @@ export interface Patient {
   nextAppointment: string;
   balance: number;
   treatments: Treatment[];
+  /** Sexo para ficha tipo Dentalink */
+  gender?: "M" | "F" | "Otro";
+  /** Dirección (opcional) */
+  address?: string;
+  /** Convenio/beneficio para badge en header */
+  benefits?: string;
+  /** Sucursal asignada */
+  branch?: string;
+  /** Profesional a cargo (id o nombre) */
+  assignedDoctorId?: string;
+  /** Colaboradores (nombres o ids) */
+  collaborators?: string[];
 }
 
 export interface Treatment {
@@ -93,11 +105,11 @@ export const mockAppointments: Appointment[] = [
 ];
 
 export const mockPatients: Patient[] = [
-  { id: "p1", name: "Sofía Ramírez", cedula: "8-765-4321", phone: "+507 6123-4567", email: "sofia.ramirez@email.com", birthDate: "1990-05-15", lastVisit: "2026-01-28", nextAppointment: "2026-02-12", balance: 0, treatments: [{ id: "t1", name: "Ortodoncia completa", status: "en_curso", cost: 3500, paid: 2100, date: "2025-06-10" }] },
-  { id: "p2", name: "Juan Pérez", cedula: "3-234-5678", phone: "+507 6234-5678", email: "juan.perez@email.com", birthDate: "1985-11-22", lastVisit: "2026-02-05", nextAppointment: "2026-02-12", balance: 450, treatments: [{ id: "t2", name: "Tratamiento de conducto #36", status: "en_curso", cost: 800, paid: 350, date: "2026-02-05" }] },
-  { id: "p3", name: "María López", cedula: "9-876-5432", phone: "+507 6345-6789", email: "maria.lopez@email.com", birthDate: "2015-03-08", lastVisit: "2025-12-15", nextAppointment: "2026-02-12", balance: 0, treatments: [{ id: "t3", name: "Revisión semestral", status: "completado", cost: 75, paid: 75, date: "2025-12-15" }] },
-  { id: "p4", name: "Pedro Morales", cedula: "4-567-8901", phone: "+507 6456-7890", email: "pedro.morales@email.com", birthDate: "1978-08-30", lastVisit: "2026-02-10", nextAppointment: "2026-02-12", balance: 2200, treatments: [{ id: "t4", name: "Implante dental #14", status: "en_curso", cost: 4500, paid: 2300, date: "2026-01-15" }] },
-  { id: "p5", name: "Carolina Vega", cedula: "7-890-1234", phone: "+507 6567-8901", email: "carolina.vega@email.com", birthDate: "1995-01-12", lastVisit: "2026-01-20", nextAppointment: "2026-02-12", balance: 150, treatments: [{ id: "t5", name: "Periodoncia - Fase 1", status: "en_curso", cost: 600, paid: 450, date: "2026-01-20" }] },
+  { id: "p1", name: "Sofía Ramírez", cedula: "8-765-4321", phone: "+507 6123-4567", email: "sofia.ramirez@email.com", birthDate: "1990-05-15", lastVisit: "2026-01-28", nextAppointment: "2026-02-12", balance: 0, treatments: [{ id: "t1", name: "Ortodoncia completa", status: "en_curso", cost: 3500, paid: 2100, date: "2025-06-10" }], gender: "F", benefits: "Convenio oro", branch: "Sede Central", assignedDoctorId: "d1" },
+  { id: "p2", name: "Juan Pérez", cedula: "3-234-5678", phone: "+507 6234-5678", email: "juan.perez@email.com", birthDate: "1985-11-22", lastVisit: "2026-02-05", nextAppointment: "2026-02-12", balance: 450, treatments: [{ id: "t2", name: "Tratamiento de conducto #36", status: "en_curso", cost: 800, paid: 350, date: "2026-02-05" }], gender: "M", branch: "Sede Central", assignedDoctorId: "d2" },
+  { id: "p3", name: "María López", cedula: "9-876-5432", phone: "+507 6345-6789", email: "maria.lopez@email.com", birthDate: "2015-03-08", lastVisit: "2025-12-15", nextAppointment: "2026-02-12", balance: 0, treatments: [{ id: "t3", name: "Revisión semestral", status: "completado", cost: 75, paid: 75, date: "2025-12-15" }], gender: "F", branch: "Sede Sur", assignedDoctorId: "d3" },
+  { id: "p4", name: "Pedro Morales", cedula: "4-567-8901", phone: "+507 6456-7890", email: "pedro.morales@email.com", birthDate: "1978-08-30", lastVisit: "2026-02-10", nextAppointment: "2026-02-12", balance: 2200, treatments: [{ id: "t4", name: "Implante dental #14", status: "en_curso", cost: 4500, paid: 2300, date: "2026-01-15" }], gender: "M", address: "Calle 50, Panamá", branch: "Sede Central", assignedDoctorId: "d4" },
+  { id: "p5", name: "Carolina Vega", cedula: "7-890-1234", phone: "+507 6567-8901", email: "carolina.vega@email.com", birthDate: "1995-01-12", lastVisit: "2026-01-20", nextAppointment: "2026-02-12", balance: 150, treatments: [{ id: "t5", name: "Periodoncia - Fase 1", status: "en_curso", cost: 600, paid: 450, date: "2026-01-20" }], gender: "F", benefits: "Seguro dental", branch: "Sede Norte", assignedDoctorId: "d5" },
 ];
 
 export const mockCashEntries: CashEntry[] = [

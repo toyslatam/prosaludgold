@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -40,14 +41,25 @@ function useAgendaNotifications() {
 }
 
 export default function Agenda() {
+  const [searchParams] = useSearchParams();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<AgendaViewMode>(DEFAULT_VIEW);
   const [filters, setFilters] = useState<AgendaFiltersState>(getDefaultAgendaFilters);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [newSlotDefault, setNewSlotDefault] = useState<{ date: string; time: string } | null>(null);
+  const [defaultPatientId, setDefaultPatientId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const notifications = useAgendaNotifications();
+
+  useEffect(() => {
+    const patientId = searchParams.get("patientId");
+    if (patientId) {
+      setDefaultPatientId(patientId);
+      setNewSlotDefault({ date: format(new Date(), "yyyy-MM-dd"), time: "09:00" });
+      setDrawerOpen(true);
+    }
+  }, [searchParams]);
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
@@ -111,6 +123,7 @@ export default function Agenda() {
       setDrawerOpen(false);
       setSelectedAppointment(null);
       setNewSlotDefault(null);
+      setDefaultPatientId(null);
     },
     [doctors, selectedAppointment, refresh, notifications.add],
   );
@@ -228,13 +241,17 @@ export default function Agenda() {
 
       <AppointmentDrawer
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) setDefaultPatientId(null);
+        }}
         appointment={selectedAppointment}
         doctors={doctors}
         chairs={chairs}
         patients={patients}
         defaultDate={newSlotDefault?.date}
         defaultTime={newSlotDefault?.time}
+        defaultPatientId={defaultPatientId ?? undefined}
         nextAppointmentByPatientId={nextAppointmentByPatientId}
         onSave={handleSave}
         onAnular={handleAnular}
@@ -243,7 +260,7 @@ export default function Agenda() {
         onEnviarConfirmacion={handleEnviarConfirmacion}
         onViewPatient={(id) => {
           setDrawerOpen(false);
-          // Navegar a /demo/pacientes o abrir modal según tu patrón
+          setDefaultPatientId(null);
         }}
       />
     </div>

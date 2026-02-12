@@ -2,13 +2,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Agenda from "./pages/dashboard/Agenda";
 import Pacientes from "./pages/dashboard/Pacientes";
+import PatientLayout from "./pages/dashboard/PatientLayout";
+import PatientData from "./pages/dashboard/patient/PatientData";
+import PatientFicha from "./pages/dashboard/patient/PatientFicha";
+import PatientPlanes from "./pages/dashboard/patient/PatientPlanes";
+import PatientPlanDetail from "./pages/dashboard/patient/PatientPlanDetail";
+import PatientFacturacion from "./pages/dashboard/patient/PatientFacturacion";
+import PatientRecibirPago from "./pages/dashboard/patient/PatientRecibirPago";
 import AtencionClinica from "./pages/dashboard/AtencionClinica";
 import Doctores from "./pages/dashboard/Doctores";
 import Caja from "./pages/dashboard/Caja";
@@ -34,7 +41,20 @@ const App = () => (
           <Route path="/demo" element={<DashboardLayout />}>
             <Route index element={<DashboardHome />} />
             <Route path="agenda" element={<Agenda />} />
-            <Route path="pacientes" element={<Pacientes />} />
+            <Route path="pacientes">
+              <Route index element={<Pacientes />} />
+              <Route path=":patientId" element={<PatientLayout />}>
+                <Route index element={<Navigate to="datos" replace />} />
+                <Route path="datos" element={<PatientData />} />
+                <Route path="ficha" element={<PatientFicha />} />
+                <Route path="planes">
+                <Route index element={<PatientPlanes />} />
+                <Route path=":planId" element={<PatientPlanDetail />} />
+              </Route>
+                <Route path="facturacion" element={<PatientFacturacion />} />
+                <Route path="recibir-pago" element={<PatientRecibirPago />} />
+              </Route>
+            </Route>
             <Route path="atencion" element={<AtencionClinica />} />
             <Route path="doctores" element={<Doctores />} />
             <Route path="caja" element={<Caja />} />
