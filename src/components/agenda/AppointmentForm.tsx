@@ -214,14 +214,17 @@ export function AppointmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Box / Sillón (opcional)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
+              <Select
+                onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                value={field.value && field.value.length > 0 ? field.value : "__none__"}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Ninguno" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">Ninguno</SelectItem>
+                  <SelectItem value="__none__">Ninguno</SelectItem>
                   {chairs.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name} {c.branch ? `· ${c.branch}` : ""}
@@ -263,13 +266,17 @@ export function AppointmentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Situación financiera</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
+              <Select
+                onValueChange={(v) => field.onChange(v === "__default__" ? undefined : v)}
+                value={field.value && field.value.length > 0 ? field.value : "__default__"}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Igual al paciente" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
+                  <SelectItem value="__default__">Igual al paciente</SelectItem>
                   {SITUATION_OPTIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}

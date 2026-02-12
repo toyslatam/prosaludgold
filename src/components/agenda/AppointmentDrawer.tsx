@@ -1,4 +1,4 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AppointmentWithDetails } from "@/types/agenda";
 import type { DoctorRow, ChairRow, PatientRow } from "@/lib/agenda/types";
 import { statusLabels } from "@/data/mockData";
@@ -46,9 +46,12 @@ export function AppointmentDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
+      <SheetContent className="overflow-y-auto sm:max-w-lg" aria-describedby="agenda-drawer-desc">
         <SheetHeader>
           <SheetTitle>{appointment ? "Detalle de cita" : "Nueva cita"}</SheetTitle>
+          <SheetDescription id="agenda-drawer-desc" className="sr-only">
+            {appointment ? "Ver y editar datos de la cita" : "Completar datos para crear una nueva cita"}
+          </SheetDescription>
         </SheetHeader>
         <div className="mt-6">
           {appointment ? (
