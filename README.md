@@ -1,73 +1,98 @@
-# Welcome to your Lovable project
+# Dental One Vision
 
-## Project info
+Aplicación web para la gestión integral de clínicas dentales. Incluye landing de producto y un dashboard con módulos de agenda, pacientes, atención clínica, caja, inventario, laboratorios, reportes y más.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Requisitos
 
-## How can I edit this code?
+- Node.js 18+ y npm (o [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) para instalarlo)
 
-There are several ways of editing your application.
+## Instalación y ejecución
 
-**Use Lovable**
+```bash
+# Clonar el repositorio
+git clone <URL_DEL_REPOSITORIO>
+cd dental-one-vision
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+# Instalar dependencias
+npm install
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Iniciar servidor de desarrollo (puerto 8080)
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Abre [http://localhost:8080](http://localhost:8080) en el navegador.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+**En PowerShell** (Windows), si `&&` no funciona, ejecuta los comandos por separado o usa `;`:
 
-**Use GitHub Codespaces**
+```powershell
+npm install
+npm run dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Scripts disponibles
 
-## What technologies are used for this project?
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Servidor de desarrollo con recarga en caliente |
+| `npm run build` | Build de producción |
+| `npm run build:dev` | Build en modo development |
+| `npm run preview` | Vista previa del build de producción |
+| `npm run lint` | Ejecutar ESLint |
+| `npm run test` | Ejecutar tests (Vitest) |
+| `npm run test:watch` | Tests en modo watch |
 
-This project is built with:
+## Estructura del proyecto
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+src/
+├── components/
+│   ├── landing/     # Secciones de la landing (Hero, FAQ, Precios, etc.)
+│   └── ui/          # Componentes shadcn/ui
+├── data/
+│   └── mockData.ts  # Datos de demo para el dashboard
+├── integrations/
+│   └── supabase/    # Cliente y tipos de Supabase
+├── pages/
+│   ├── Index.tsx    # Landing pública
+│   ├── NotFound.tsx
+│   └── dashboard/   # Vistas del panel (Agenda, Pacientes, Caja, etc.)
+├── hooks/
+├── lib/
+├── App.tsx
+└── main.tsx
+```
 
-## How can I deploy this project?
+## Rutas principales
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **`/`** — Landing (producto, precios, FAQ, seguridad)
+- **`/demo`** — Dashboard (requiere ir a esta ruta desde el menú o enlace)
+  - Inicio, Agenda, Pacientes, Atención Clínica, Doctores, Caja, Remuneraciones, Inventario, Laboratorios, Gastos, Reportes, Experiencia Paciente, Hub IA, Configuración
 
-## Can I connect a custom domain to my Lovable project?
+## Tecnologías
 
-Yes, you can!
+- **Build:** Vite 5, React 18, TypeScript
+- **UI:** shadcn/ui (Radix UI), Tailwind CSS, Framer Motion, Lucide React
+- **Routing:** React Router v6
+- **Formularios:** React Hook Form, Zod, @hookform/resolvers
+- **Datos:** TanStack React Query, Supabase (cliente configurado)
+- **Tests:** Vitest, Testing Library
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Variables de entorno
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Crea un archivo `.env` en la raíz con las variables de Supabase (cuando vayas a conectar el backend):
+
+```env
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu_clave_publica
+```
+
+El proyecto incluye un `.env.example` opcional como referencia; no subas `.env` al repositorio.
+
+## Despliegue
+
+- **Build:** `npm run build` — la salida queda en `dist/`.
+- Puedes desplegar en Vercel, Netlify, o cualquier host estático usando la carpeta `dist/`.
+
+## Licencia
+
+Proyecto privado.
