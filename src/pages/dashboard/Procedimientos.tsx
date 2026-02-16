@@ -5,15 +5,10 @@ import {
   createProcedure,
   type Procedure,
 } from "@/lib/agenda/procedures";
-import {
-  getCategories,
-  addCategory,
-  updateCategory,
-  deleteCategory,
-  type ProcedureCategory,
-} from "@/lib/agenda/procedureCategories";
+import { getCategories, addCategory, type ProcedureCategory } from "@/lib/agenda/procedureCategories";
 import { getDoctors } from "@/lib/agenda/repository";
 import { DoctorsMultiSelect } from "@/components/procedimientos/DoctorsMultiSelect";
+import { CategoryManagerModal } from "@/components/procedimientos/CategoryManagerModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -40,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const emptyProcedure: Omit<Procedure, "id"> = {
@@ -58,7 +53,7 @@ export default function Procedimientos() {
   const [categories, setCategories] = useState<ProcedureCategory[]>(() => getCategories());
   const [editing, setEditing] = useState<Procedure | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const doctors = useMemo(() => getDoctors(), []);
 
   const refresh = () => {
@@ -88,32 +83,8 @@ export default function Procedimientos() {
     setCreating(false);
   };
 
-  const handleAddCategory = () => {
-    const name = newCategoryName.trim();
-    if (!name) {
-      toast.error("Escriba el nombre de la categoría");
-      return;
-    }
-    if (categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
-      toast.error("Ya existe una categoría con ese nombre");
-      return;
-    }
-    addCategory(name);
-    setNewCategoryName("");
-    refresh();
-    toast.success("Categoría agregada");
-  };
-
-  const handleDeleteCategory = (id: string) => {
-    const cat = categories.find((c) => c.id === id);
-    if (procedures.some((p) => p.category === cat?.name)) {
-      toast.error("Hay procedimientos con esta categoría. Cámbielos antes de eliminar.");
-      return;
-    }
-    deleteCategory(id);
-    refresh();
-    toast.success("Categoría eliminada");
-  };
+  const procedureCountByCategory = (categoryName: string) =>
+    procedures.filter((p) => p.category === categoryName).length;
 
   return (
     <div className="space-y-8">
@@ -124,53 +95,36 @@ export default function Procedimientos() {
         </p>
       </div>
 
-      {/* Categorías */}
+      {/* Categorías: acceso compacto al gestor */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Categorías</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Agregue categorías para organizar los procedimientos. Escalable.
+            Organice los procedimientos por categoría. Gestión en un solo lugar.
           </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Input
-              placeholder="Nueva categoría"
-              className="max-w-[200px]"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
-            />
-            <Button type="button" onClick={handleAddCategory} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Agregar
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
-              >
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: c.color }}
-                />
-                <span>{c.name}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDeleteCategory(c.id)}
-                  title="Eliminar categoría"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
+        <CardContent>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setCategoriesOpen(true)}
+            className="gap-2"
+          >
+            Categorías
+            <span className="inline-flex items-center justify-center rounded-full bg-muted-foreground/20 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {categories.length}
+            </span>
+          </Button>
         </CardContent>
       </Card>
+
+      <CategoryManagerModal
+        open={categoriesOpen}
+        onOpenChange={setCategoriesOpen}
+        categories={categories}
+        onCategoriesChange={refresh}
+        procedureCountByCategory={procedureCountByCategory}
+      />
 
       {/* Listado procedimientos */}
       <Card>
