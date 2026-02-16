@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { DemoProvider } from "./contexts/DemoContext";
 import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Agenda from "./pages/dashboard/Agenda";
@@ -39,7 +40,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/demo" element={<DashboardLayout />}>
+          <Route path="/demo" element={<Navigate to="/demo/dental" replace />} />
+          <Route path="/demo/:vertical" element={<DemoProvider><DashboardLayout /></DemoProvider>}>
             <Route index element={<DashboardHome />} />
             <Route path="agenda" element={<Agenda />} />
             <Route path="procedimientos" element={<Procedimientos />} />

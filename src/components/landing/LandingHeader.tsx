@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
+import { DEMO_VERTICALS } from "@/config/demos";
 
 const navItems = [
   { label: "Módulos", href: "#modulos" },
@@ -35,9 +42,21 @@ const LandingHeader = () => {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Link to="/demo">
-            <Button variant="outline" size="sm">Ver demo</Button>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                Ver demo <ChevronDown className="h-4 w-4 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <span className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Elige una demo</span>
+              {DEMO_VERTICALS.map((v) => (
+                <DropdownMenuItem key={v.key} asChild>
+                  <Link to={`/demo/${v.key}`}>{v.name}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <a href="#contacto">
             <Button size="sm">Solicitar demo</Button>
           </a>
@@ -62,9 +81,16 @@ const LandingHeader = () => {
                   {item.label}
                 </a>
               ))}
-              <div className="flex gap-2 pt-2">
-                <Link to="/demo" className="flex-1"><Button variant="outline" className="w-full" size="sm">Ver demo</Button></Link>
-                <a href="#contacto" className="flex-1"><Button className="w-full" size="sm">Solicitar demo</Button></a>
+              <div className="flex flex-col gap-2 pt-2">
+                <p className="text-xs font-medium text-muted-foreground px-1">Ver demo</p>
+                {DEMO_VERTICALS.map((v) => (
+                  <Link key={v.key} to={`/demo/${v.key}`} onClick={() => setMobileOpen(false)}>
+                    <Button variant="outline" className="w-full" size="sm">{v.name}</Button>
+                  </Link>
+                ))}
+                <a href="#contacto" className="mt-1" onClick={() => setMobileOpen(false)}>
+                  <Button className="w-full" size="sm">Solicitar demo</Button>
+                </a>
               </div>
             </nav>
           </motion.div>

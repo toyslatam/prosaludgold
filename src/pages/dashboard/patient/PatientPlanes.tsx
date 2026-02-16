@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
 import { getPlansByPatient } from "@/lib/patients/treatmentPlans";
 import type { TreatmentPlan, PlanFinancialStatus } from "@/lib/patients/treatmentPlans";
@@ -28,6 +29,7 @@ const STATUS_LABELS: Record<PlanFinancialStatus, string> = {
 export default function PatientPlanes() {
   const { patient } = useOutletContext<{ patient: Patient }>();
   const navigate = useNavigate();
+  const { basePath } = useDemo();
   const [filter, setFilter] = useState<"activos" | "todos">("activos");
 
   const allPlans = useMemo(() => getPlansByPatient(patient.id), [patient.id]);
@@ -77,7 +79,7 @@ export default function PatientPlanes() {
             <PlanCard
               key={plan.id}
               plan={plan}
-              onClick={() => navigate(`/demo/pacientes/${patient.id}/planes/${plan.id}`)}
+              onClick={() => navigate(`${basePath}/pacientes/${patient.id}/planes/${plan.id}`)}
             />
           ))}
         </div>

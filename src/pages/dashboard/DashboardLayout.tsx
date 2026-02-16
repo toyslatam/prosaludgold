@@ -1,31 +1,60 @@
 import { useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
 import {
-  LayoutDashboard, CalendarDays, Users, Stethoscope, UserCog,
-  CreditCard, Calculator, Package, FlaskConical, Receipt,
-  BarChart3, Heart, Brain, Settings, Menu, X, LogOut, ClipboardList
+  LayoutDashboard,
+  CalendarDays,
+  Users,
+  Stethoscope,
+  UserCog,
+  CreditCard,
+  Calculator,
+  Package,
+  FlaskConical,
+  Receipt,
+  BarChart3,
+  Heart,
+  Brain,
+  Settings,
+  Menu,
+  X,
+  LogOut,
+  ClipboardList,
 } from "lucide-react";
+import { useDemo, useDemoConfig } from "@/contexts/DemoContext";
+import { PATH_KEY_TO_PATH } from "@/config/demos/navSpec";
 
-const sidebarItems = [
-  { label: "Inicio", icon: LayoutDashboard, path: "/demo" },
-  { label: "Agenda", icon: CalendarDays, path: "/demo/agenda" },
-  { label: "Procedimientos", icon: ClipboardList, path: "/demo/procedimientos" },
-  { label: "Pacientes", icon: Users, path: "/demo/pacientes" },
-  { label: "Atención Clínica", icon: Stethoscope, path: "/demo/atencion" },
-  { label: "Doctores", icon: UserCog, path: "/demo/doctores" },
-  { label: "Caja y Pagos", icon: CreditCard, path: "/demo/caja" },
-  { label: "Remuneraciones", icon: Calculator, path: "/demo/remuneraciones" },
-  { label: "Inventario", icon: Package, path: "/demo/inventario" },
-  { label: "Laboratorios", icon: FlaskConical, path: "/demo/laboratorios" },
-  { label: "Gastos", icon: Receipt, path: "/demo/gastos" },
-  { label: "Reportes", icon: BarChart3, path: "/demo/reportes" },
-  { label: "Experiencia Paciente", icon: Heart, path: "/demo/experiencia" },
-  { label: "Hub de IA", icon: Brain, path: "/demo/ia" },
-  { label: "Configuración", icon: Settings, path: "/demo/configuracion" },
-];
+const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  inicio: LayoutDashboard,
+  agenda: CalendarDays,
+  procedimientos: ClipboardList,
+  pacientes: Users,
+  atencion: Stethoscope,
+  doctores: UserCog,
+  caja: CreditCard,
+  remuneraciones: Calculator,
+  inventario: Package,
+  laboratorios: FlaskConical,
+  gastos: Receipt,
+  reportes: BarChart3,
+  experiencia: Heart,
+  ia: Brain,
+  configuracion: Settings,
+};
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { basePath } = useDemo();
+  const config = useDemoConfig();
+  const sidebarItems = config.navItems.map((item) => {
+    const pathSegment = PATH_KEY_TO_PATH[item.pathKey] ?? item.pathKey;
+    const path = pathSegment ? `${basePath}/${pathSegment}` : basePath;
+    const Icon = PATH_KEY_TO_ICON[item.pathKey];
+    return {
+      label: item.label,
+      path,
+      icon: Icon ?? LayoutDashboard,
+    };
+  });
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -51,7 +80,7 @@ const DashboardLayout = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              end={item.path === "/demo"}
+              end={item.path === basePath}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${

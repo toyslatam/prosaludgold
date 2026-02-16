@@ -1,4 +1,5 @@
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
 import { getPlanById } from "@/lib/patients/treatmentPlans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ export default function PatientPlanDetail() {
   const { patient } = useOutletContext<{ patient: Patient }>();
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
+  const { basePath } = useDemo();
 
   const plan =
     patient.id && planId ? getPlanById(patient.id, planId) : undefined;
@@ -28,7 +30,7 @@ export default function PatientPlanDetail() {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <p className="text-muted-foreground">Plan no encontrado</p>
-        <Button variant="outline" onClick={() => navigate(`/demo/pacientes/${patient.id}/planes`)}>
+        <Button variant="outline" onClick={() => navigate(`${basePath}/pacientes/${patient.id}/planes`)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver a planes
         </Button>
@@ -45,7 +47,7 @@ export default function PatientPlanDetail() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate(`/demo/pacientes/${patient.id}/planes`)}
+          onClick={() => navigate(`${basePath}/pacientes/${patient.id}/planes`)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDemo } from "@/contexts/DemoContext";
 import { getPatients } from "@/lib/patients/repository";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 const Pacientes = () => {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { basePath } = useDemo();
   const patients = getPatients();
   const filtered = patients.filter(
     (p) =>
@@ -75,7 +77,7 @@ const Pacientes = () => {
                 variant="outline"
                 size="sm"
                 className="gap-1"
-                onClick={() => navigate(`/demo/pacientes/${patient.id}/datos`)}
+                onClick={() => navigate(`${basePath}/pacientes/${patient.id}/datos`)}
               >
                 <Eye className="w-3 h-3" /> Ver ficha
               </Button>

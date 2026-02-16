@@ -3,7 +3,7 @@
 ## Cómo correr
 
 1. Instalar dependencias: `npm install`
-2. Desarrollo: `npm run dev` → abrir http://localhost:8080/demo/agenda
+2. Desarrollo: `npm run dev` → abrir http://localhost:8080/demo/dental/agenda (o /demo que redirige a /demo/dental)
 3. La agenda usa datos en **localStorage** por defecto (seed la primera vez). Para resetear datos, borra las claves `agenda_appointments`, `agenda_patients`, `agenda_doctors`, `agenda_sites`, `agenda_locations` en localStorage.
 
 ## Cómo cambiar el proveedor de notificaciones

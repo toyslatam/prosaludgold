@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router-dom";
+import { useDemo } from "@/contexts/DemoContext";
 import { getPatientById } from "@/lib/patients/repository";
 import { PatientHeader } from "@/components/patient/PatientHeader";
 import { PatientTabs } from "@/components/patient/PatientTabs";
@@ -8,14 +9,15 @@ import { toast } from "sonner";
 export default function PatientLayout() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+  const { basePath: demoBasePath } = useDemo();
   const patient = patientId ? getPatientById(patientId) : undefined;
 
-  const basePath = `/demo/pacientes/${patientId}`;
+  const basePath = `${demoBasePath}/pacientes/${patientId}`;
 
   const handleAgendar = useCallback(() => {
-    navigate(`/demo/agenda?patientId=${patientId}`);
+    navigate(`${demoBasePath}/agenda?patientId=${patientId}`);
     toast.info("Redirigiendo a Agenda para agendar cita con este paciente");
-  }, [navigate, patientId]);
+  }, [navigate, patientId, demoBasePath]);
 
   const handleHistoriaClinica = useCallback(() => {
     const content = `HISTORIA CLÍNICA - ${patient.name}\nID: ${patient.id}\nCédula: ${patient.cedula}\nGenerado: ${new Date().toLocaleString("es")}\n\n(Export mock - integrar con PDF real según backend)`;
@@ -30,7 +32,7 @@ export default function PatientLayout() {
   }, [patient]);
 
   if (!patientId) {
-    return <Navigate to="/demo/pacientes" replace />;
+    return <Navigate to={`${demoBasePath}/pacientes`} replace />;
   }
 
   if (!patient) {
@@ -40,7 +42,7 @@ export default function PatientLayout() {
         <button
           type="button"
           className="text-primary hover:underline"
-          onClick={() => navigate("/demo/pacientes")}
+          onClick={() => navigate(`${demoBasePath}/pacientes`)}
         >
           Volver a la lista
         </button>
