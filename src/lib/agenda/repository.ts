@@ -78,6 +78,7 @@ export function getAppointmentsWithDetails(): AppointmentWithDetails[] {
       status: apt.status,
       branch: apt.branch,
       reason: apt.reason,
+      procedureId: apt.procedureId ?? null,
       chairId: apt.chairId ?? null,
       chairName: chair?.name ?? null,
       situation: apt.situation ?? patient?.situation ?? null,

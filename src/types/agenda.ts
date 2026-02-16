@@ -38,6 +38,7 @@ export interface AppointmentWithDetails {
   status: AppointmentStatus;
   branch: string;
   reason: string;
+  procedureId?: string | null;
   chairId?: string | null;
   chairName?: string | null;
   situation?: SituationFinancial | null;

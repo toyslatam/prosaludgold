@@ -11,6 +11,7 @@ export interface AppointmentRow {
   status: AppointmentStatus;
   branch: string;
   reason: string;
+  procedureId?: string | null;
   chairId?: string | null;
   situation?: SituationFinancial | null;
   confirmations: Confirmations;

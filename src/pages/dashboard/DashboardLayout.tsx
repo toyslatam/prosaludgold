@@ -3,12 +3,13 @@ import { NavLink, Outlet, Link } from "react-router-dom";
 import {
   LayoutDashboard, CalendarDays, Users, Stethoscope, UserCog,
   CreditCard, Calculator, Package, FlaskConical, Receipt,
-  BarChart3, Heart, Brain, Settings, Menu, X, LogOut
+  BarChart3, Heart, Brain, Settings, Menu, X, LogOut, ClipboardList
 } from "lucide-react";
 
 const sidebarItems = [
   { label: "Inicio", icon: LayoutDashboard, path: "/demo" },
   { label: "Agenda", icon: CalendarDays, path: "/demo/agenda" },
+  { label: "Procedimientos", icon: ClipboardList, path: "/demo/procedimientos" },
   { label: "Pacientes", icon: Users, path: "/demo/pacientes" },
   { label: "Atención Clínica", icon: Stethoscope, path: "/demo/atencion" },
   { label: "Doctores", icon: UserCog, path: "/demo/doctores" },

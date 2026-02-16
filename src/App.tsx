@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import DashboardLayout from "./pages/dashboard/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Agenda from "./pages/dashboard/Agenda";
+import Procedimientos from "./pages/dashboard/Procedimientos";
 import Pacientes from "./pages/dashboard/Pacientes";
 import PatientLayout from "./pages/dashboard/PatientLayout";
 import PatientData from "./pages/dashboard/patient/PatientData";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/demo" element={<DashboardLayout />}>
             <Route index element={<DashboardHome />} />
             <Route path="agenda" element={<Agenda />} />
+            <Route path="procedimientos" element={<Procedimientos />} />
             <Route path="pacientes">
               <Route index element={<Pacientes />} />
               <Route path=":patientId" element={<PatientLayout />}>

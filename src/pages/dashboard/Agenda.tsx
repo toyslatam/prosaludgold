@@ -98,6 +98,7 @@ export default function Agenda() {
         status: values.status,
         branch: doctor?.branch ?? "Sede Central",
         reason: values.reason,
+        procedureId: values.procedureId === "__other__" ? null : values.procedureId,
         chairId: values.chairId || null,
         situation: values.situation ?? null,
         confirmations: {
