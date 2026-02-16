@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AppointmentWithDetails } from "@/types/agenda";
-import type { DoctorRow, ChairRow } from "@/lib/agenda/types";
+import type { DoctorRow } from "@/lib/agenda/types";
+import type { LocationWithSiteName } from "@/lib/agenda/locations";
 import type { PatientRow } from "@/lib/agenda/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { PatientAutocomplete } from "./PatientAutocomplete";
+import { LocationCombobox } from "./LocationCombobox";
 import { getProcedures, getProcedureById } from "@/lib/agenda/procedures";
 
 const PROCEDURE_OTHER = "__other__";
@@ -58,13 +60,14 @@ export type AppointmentFormValues = z.infer<typeof schema>;
 interface AppointmentFormProps {
   initial?: Partial<AppointmentWithDetails> & { patient?: PatientRow | null };
   doctors: DoctorRow[];
-  chairs: ChairRow[];
+  locations: LocationWithSiteName[];
   patients: PatientRow[];
   defaultDate?: string;
   defaultTime?: string;
   nextAppointmentByPatientId?: Record<string, string>;
   onSubmit: (values: AppointmentFormValues, patient: PatientRow) => void;
   onCancel: () => void;
+  onOpenLocationManager?: () => void;
   onAnular?: (motivo?: string) => void;
   onNoAsiste?: () => void;
   onAtendida?: () => void;
@@ -75,13 +78,14 @@ interface AppointmentFormProps {
 export function AppointmentForm({
   initial,
   doctors,
-  chairs,
+  locations,
   patients,
   defaultDate,
   defaultTime,
   nextAppointmentByPatientId,
   onSubmit,
   onCancel,
+  onOpenLocationManager,
   onAnular,
   onNoAsiste,
   onAtendida,
@@ -307,25 +311,16 @@ export function AppointmentForm({
           name="chairId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Box / Sillón (opcional)</FormLabel>
-              <Select
-                onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                value={field.value && field.value.length > 0 ? field.value : "__none__"}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Ninguno" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="__none__">Ninguno</SelectItem>
-                  {chairs.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.branch ? `· ${c.branch}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>Ubicación (opcional)</FormLabel>
+              <FormControl>
+                <LocationCombobox
+                  locations={locations}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  placeholder="Selecciona una ubicación…"
+                  onOpenManage={onOpenLocationManager}
+                />
+              </FormControl>
             </FormItem>
           )}
         />

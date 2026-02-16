@@ -5,17 +5,20 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   getAppointmentsWithDetails,
+  getAppointmentsRaw,
   getDoctors,
   getChairs,
   getPatients,
   createAppointment,
   updateAppointment,
 } from "@/lib/agenda/repository";
+import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
 import { filterAppointmentsByDate, applyAgendaFilters } from "@/lib/agenda/filterAppointments";
 import { AgendaToolbar } from "@/components/agenda/AgendaToolbar";
 import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
 import { FiltersPanel, getDefaultAgendaFilters, type AgendaFiltersState } from "@/components/agenda/FiltersPanel";
 import { AppointmentDrawer } from "@/components/agenda/AppointmentDrawer";
+import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
 import { AgendaDailyListTable } from "@/components/agenda/AgendaDailyListTable";
 import { CalendarDailyGrid } from "@/components/agenda/CalendarDailyGrid";
 import type { AppointmentWithDetails } from "@/types/agenda";
@@ -50,6 +53,7 @@ export default function Agenda() {
   const [newSlotDefault, setNewSlotDefault] = useState<{ date: string; time: string } | null>(null);
   const [defaultPatientId, setDefaultPatientId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [locationManagerOpen, setLocationManagerOpen] = useState(false);
   const notifications = useAgendaNotifications();
 
   useEffect(() => {
@@ -65,8 +69,15 @@ export default function Agenda() {
 
   const doctors = useMemo(() => getDoctors(), [refreshKey]);
   const chairs = useMemo(() => getChairs(), [refreshKey]);
+  const locationsForForm = useMemo(
+    () => getLocationsWithSiteNames({ includeInactive: false }),
+    [refreshKey],
+  );
   const patients = useMemo(() => getPatients(), [refreshKey]);
   const allAppointments = useMemo(() => getAppointmentsWithDetails(), [refreshKey]);
+  const appointmentCountByLocationId = useCallback((locationId: string) => {
+    return getAppointmentsRaw().filter((a) => a.chairId === locationId).length;
+  }, []);
 
   const filteredByDate = useMemo(
     () => filterAppointmentsByDate(allAppointments, selectedDate, viewMode),
@@ -248,21 +259,33 @@ export default function Agenda() {
         }}
         appointment={selectedAppointment}
         doctors={doctors}
-        chairs={chairs}
+        locations={locationsForForm}
         patients={patients}
         defaultDate={newSlotDefault?.date}
         defaultTime={newSlotDefault?.time}
         defaultPatientId={defaultPatientId ?? undefined}
         nextAppointmentByPatientId={nextAppointmentByPatientId}
         onSave={handleSave}
+        onOpenLocationManager={() => setLocationManagerOpen(true)}
         onAnular={handleAnular}
         onNoAsiste={handleNoAsiste}
         onAtendida={handleAtendida}
         onEnviarConfirmacion={handleEnviarConfirmacion}
-        onViewPatient={(id) => {
+        onViewPatient={() => {
           setDrawerOpen(false);
           setDefaultPatientId(null);
         }}
+      />
+
+      <LocationManagerModal
+        open={locationManagerOpen}
+        onOpenChange={(open) => {
+          setLocationManagerOpen(open);
+          if (!open) refresh();
+        }}
+        locations={locationsForForm}
+        onLocationsChange={refresh}
+        appointmentCountByLocationId={appointmentCountByLocationId}
       />
     </div>
   );

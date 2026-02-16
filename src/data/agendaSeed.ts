@@ -1,4 +1,4 @@
-import type { AppointmentRow, PatientRow, DoctorRow, ChairRow } from "@/lib/agenda/types";
+import type { AppointmentRow, PatientRow, DoctorRow } from "@/lib/agenda/types";
 import type { Confirmations } from "@/types/agenda";
 import { addDays, format } from "date-fns";
 
@@ -21,15 +21,6 @@ export const seedDoctors: DoctorRow[] = [
   { id: "d8", name: "Dr. Fernando López", specialty: "Cirugía", branch: "Sede Central", available: true, colorTag: "#f97316" },
   { id: "d9", name: "Dra. Carmen Vega", specialty: "Ortodoncia", branch: "Sede Norte", available: true, colorTag: "#a855f7" },
   { id: "d10", name: "Dr. Jorge Martínez", specialty: "Endodoncia", branch: "Sede Sur", available: true, colorTag: "#0d9488" },
-];
-
-export const seedChairs: ChairRow[] = [
-  { id: "c1", name: "Sillón 1", branch: "Sede Central" },
-  { id: "c2", name: "Sillón 2", branch: "Sede Central" },
-  { id: "c3", name: "Sillón 3", branch: "Sede Central" },
-  { id: "c4", name: "Box 1", branch: "Sede Sur" },
-  { id: "c5", name: "Box 2", branch: "Sede Sur" },
-  { id: "c6", name: "Sillón 1", branch: "Sede Norte" },
 ];
 
 /** 30 pacientes con situación (deuda / sin_saldo / saldada) para seed */
@@ -89,7 +80,8 @@ function generateSeedAppointments(): AppointmentRow[] {
 
       const patient = seedPatients[Math.floor(Math.random() * seedPatients.length)];
       const doctor = seedDoctors[Math.floor(Math.random() * seedDoctors.length)];
-      const chair = Math.random() > 0.3 ? seedChairs[Math.floor(Math.random() * seedChairs.length)] : null;
+      const chairIds = ["c1", "c2", "c3", "c4", "c5", "c6"];
+      const chair = Math.random() > 0.3 ? { id: chairIds[Math.floor(Math.random() * chairIds.length)] } : null;
       const status = statuses[Math.floor(Math.random() * statuses.length)];
       const duration = [30, 45, 60, 90][Math.floor(Math.random() * 4)];
       const createdAt = new Date().toISOString();

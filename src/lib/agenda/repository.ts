@@ -1,12 +1,13 @@
 import type { AppointmentWithDetails } from "@/types/agenda";
 import type { AppointmentRow, PatientRow, DoctorRow, ChairRow } from "./types";
-import { seedDoctors, seedChairs, seedPatients, seedAppointments } from "@/data/agendaSeed";
+import { seedDoctors, seedPatients, seedAppointments } from "@/data/agendaSeed";
+import { getLocations } from "./locations";
+import { getSiteById } from "./sites";
 
 const STORAGE_KEYS = {
   appointments: "agenda_appointments",
   patients: "agenda_patients",
   doctors: "agenda_doctors",
-  chairs: "agenda_chairs",
 } as const;
 
 function loadJson<T>(key: string, fallback: T): T {
@@ -28,8 +29,13 @@ export function getDoctors(): DoctorRow[] {
   return loadJson(STORAGE_KEYS.doctors, seedDoctors);
 }
 
+/** Ubicaciones activas como ChairRow para compatibilidad (id, name, branch = sede) */
 export function getChairs(): ChairRow[] {
-  return loadJson(STORAGE_KEYS.chairs, seedChairs);
+  return getLocations({ includeInactive: false }).map((l) => ({
+    id: l.id,
+    name: l.name,
+    branch: getSiteById(l.siteId)?.name ?? "",
+  }));
 }
 
 /** Pacientes: seed por defecto */

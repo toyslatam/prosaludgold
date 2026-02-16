@@ -1,6 +1,7 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AppointmentWithDetails } from "@/types/agenda";
-import type { DoctorRow, ChairRow, PatientRow } from "@/lib/agenda/types";
+import type { DoctorRow, PatientRow } from "@/lib/agenda/types";
+import type { LocationWithSiteName } from "@/lib/agenda/locations";
 import { statusLabels } from "@/data/mockData";
 import { SITUATION_LABELS } from "@/types/agenda";
 import { MessageCircle, Mail, Phone, Pin } from "lucide-react";
@@ -12,13 +13,14 @@ interface AppointmentDrawerProps {
   onOpenChange: (open: boolean) => void;
   appointment: AppointmentWithDetails | null;
   doctors: DoctorRow[];
-  chairs: ChairRow[];
+  locations: LocationWithSiteName[];
   patients: PatientRow[];
   nextAppointmentByPatientId?: Record<string, string>;
   defaultDate?: string;
   defaultTime?: string;
   defaultPatientId?: string;
   onSave: (values: AppointmentFormValues, patient: PatientRow) => void;
+  onOpenLocationManager?: () => void;
   onAnular: (id: string, motivo?: string) => void;
   onNoAsiste: (id: string) => void;
   onAtendida: (id: string) => void;
@@ -31,13 +33,14 @@ export function AppointmentDrawer({
   onOpenChange,
   appointment,
   doctors,
-  chairs,
+  locations,
   patients,
   nextAppointmentByPatientId,
   defaultDate,
   defaultTime,
   defaultPatientId,
   onSave,
+  onOpenLocationManager,
   onAnular,
   onNoAsiste,
   onAtendida,
@@ -125,11 +128,12 @@ export function AppointmentDrawer({
                   patient: patient ?? undefined,
                 }}
                 doctors={doctors}
-                chairs={chairs}
+                locations={locations}
                 patients={patients}
                 nextAppointmentByPatientId={nextAppointmentByPatientId}
                 onSubmit={onSave}
                 onCancel={() => onOpenChange(false)}
+                onOpenLocationManager={onOpenLocationManager}
                 onAnular={() => onAnular(appointment.id)}
                 onNoAsiste={() => onNoAsiste(appointment.id)}
                 onAtendida={() => onAtendida(appointment.id)}
@@ -145,13 +149,14 @@ export function AppointmentDrawer({
                   : undefined
               }
               doctors={doctors}
-              chairs={chairs}
+              locations={locations}
               patients={patients}
               defaultDate={defaultDate}
               defaultTime={defaultTime}
               nextAppointmentByPatientId={nextAppointmentByPatientId}
               onSubmit={onSave}
               onCancel={() => onOpenChange(false)}
+              onOpenLocationManager={onOpenLocationManager}
             />
           )}
         </div>
