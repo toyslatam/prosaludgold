@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { getSites } from "@/lib/agenda/sites";
+import { getLocations } from "@/lib/agenda/locations";
 import {
   getLocationsWithSiteNames,
   getLocationById,
@@ -41,8 +42,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Check, X, Archive, ArchiveRestore } from "lucide-react";
+import { Pencil, Trash2, Check, X, Archive, ArchiveRestore, Building2 } from "lucide-react";
 import { toast } from "sonner";
+import { SiteManagerModal } from "./SiteManagerModal";
 
 const CUSTOM_TYPE = "__custom__";
 
@@ -61,7 +63,14 @@ export function LocationManagerModal({
   onLocationsChange,
   appointmentCountByLocationId,
 }: LocationManagerModalProps) {
-  const sites = getSites();
+  const [sitesKey, setSitesKey] = useState(0);
+  const sites = useMemo(() => getSites(), [sitesKey]);
+  const locationCountBySiteId = useCallback(
+    (siteId: string) =>
+      getLocations({ includeInactive: true }).filter((l) => l.siteId === siteId).length,
+    [],
+  );
+  const [siteManagerOpen, setSiteManagerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterSiteId, setFilterSiteId] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -229,6 +238,17 @@ export function LocationManagerModal({
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setSiteManagerOpen(true)}
+                aria-label="Gestionar sedes"
+              >
+                <Building2 className="h-4 w-4" />
+                Gestionar sedes
+              </Button>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Tipo" />
@@ -508,6 +528,13 @@ export function LocationManagerModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SiteManagerModal
+        open={siteManagerOpen}
+        onOpenChange={setSiteManagerOpen}
+        onSitesChange={() => setSitesKey((k) => k + 1)}
+        locationCountBySiteId={locationCountBySiteId}
+      />
     </>
   );
 }
