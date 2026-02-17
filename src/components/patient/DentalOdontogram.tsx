@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   DENTAL_CONDITION_LABELS,
   DENTAL_CONDITION_COLORS,
@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,15 @@ const PROCEDURE_OPTIONS = [
 type PanelType = "procedure" | "condition";
 
 const TOUR_STORAGE_KEY = "psg_odontogram_tour_done";
+
+/** Instrucciones para "Más info" (no siempre visibles) */
+const ODONTOGRAM_INSTRUCTIONS = [
+  "Click izquierdo: cargar procedimiento en la pieza o superficie seleccionada.",
+  "Click derecho: definir lesión o preexistencia.",
+  "Ctrl+click (o Cmd): selección múltiple de piezas o superficies.",
+  "Esc: limpiar selección y cerrar panel.",
+];
+
 const ODONTOGRAM_TOUR_STEPS = [
   { title: "Odontograma FDI", content: "Aquí cargas prestaciones (procedimientos) y defines preexistencias o lesiones por pieza y superficie." },
   { title: "Click izquierdo", content: "Haz click izquierdo en una pieza o superficie para seleccionarla y abrir el panel de procedimiento. Puedes elegir el procedimiento, cantidad y doctor, y aplicar." },
@@ -149,6 +159,9 @@ export function DentalOdontogram({
   const [conditionNotes, setConditionNotes] = useState("");
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const panelFirstInputRef = useRef<HTMLButtonElement | null>(null);
 
   const upperRight = permanent ? PERMANENT_UPPER_RIGHT : TEMPORARY_UPPER_RIGHT;
   const upperLeft = permanent ? PERMANENT_UPPER_LEFT : TEMPORARY_UPPER_LEFT;
@@ -297,11 +310,26 @@ export function DentalOdontogram({
         setSelectedToothIds(new Set());
         setSelectedSurfaces(new Set());
         setPanelAnchor(null);
+        setInfoDialogOpen(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(typeof window !== "undefined" && window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    if (panelAnchor && !isMobile) {
+      const t = setTimeout(() => panelFirstInputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [panelAnchor, isMobile]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -378,9 +406,6 @@ export function DentalOdontogram({
       {(selectedToothIds.size > 0 || selectedCondition) && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground mb-2">
-              Ctrl+clic para selección múltiple · Escape para limpiar
-            </p>
             <div className="flex flex-wrap items-center gap-4">
               <div>
                 <span className="text-sm font-medium">Pieza(s): </span>
@@ -443,7 +468,7 @@ export function DentalOdontogram({
             hoveredToothId={hoveredToothId}
             onToothHover={setHoveredToothId}
           />
-          {/* Leyenda: Procedimientos / Lesiones / Preexistencias */}
+          {/* Leyenda + Más info */}
           <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t text-xs">
             <span className="text-muted-foreground">Leyenda:</span>
             <div className="flex items-center gap-1.5">
@@ -458,141 +483,194 @@ export function DentalOdontogram({
               <span className="w-4 h-4 rounded-sm shrink-0" style={{ backgroundColor: "#eab30880" }} />
               <span>Preexistencias</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setInfoDialogOpen(true)}
+              className="ml-auto text-xs text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded"
+            >
+              Más info
+            </button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Panel contextual: Procedimiento o Lesión/Preexistencia (anclado al click) */}
-      {panelAnchor && (
+      {/* Diálogo instrucciones (abierto desde "Más info") */}
+      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Instrucciones del odontograma</DialogTitle>
+          </DialogHeader>
+          <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+            {ODONTOGRAM_INSTRUCTIONS.map((text, i) => (
+              <li key={i}>{text}</li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button type="button" size="sm" onClick={() => setInfoDialogOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Panel contextual: Procedimiento o Lesión/Preexistencia — desktop: popover; mobile: drawer */}
+      {panelAnchor && isMobile ? (
+        <Drawer open={!!panelAnchor} onOpenChange={(open) => !open && setPanelAnchor(null)}>
+          <DrawerContent className="max-h-[90vh]">
+            <DrawerHeader className="border-b border-border pb-4">
+              <DrawerTitle className="text-base font-semibold">
+                {panelAnchor.type === "procedure" ? "Cargar procedimiento" : "Lesión / Preexistencia"}
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-4 overflow-y-auto">
+              {panelAnchor.type === "procedure" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Procedimiento</Label>
+                    <Select value={procedureName} onValueChange={setProcedureName}>
+                      <SelectTrigger ref={panelFirstInputRef} className="h-10" />
+                      <SelectContent>
+                        {PROCEDURE_OPTIONS.map((p) => (
+                          <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Cantidad</Label>
+                    <Input type="number" min={1} value={procedureQuantity} onChange={(e) => setProcedureQuantity(Number(e.target.value) || 1)} className="h-10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Doctor</Label>
+                    <Input value={procedureDoctor} onChange={(e) => setProcedureDoctor(e.target.value)} className="h-10" placeholder="Profesional a cargo" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}{selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}</p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>Cancelar</Button>
+                    <Button size="sm" onClick={applyProcedure}>Aplicar</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tipo</Label>
+                    <ToggleGroup type="single" value={conditionKind} onValueChange={(v) => v && setConditionKind(v as ConditionKind)} className="gap-1">
+                      <ToggleGroupItem value="LESION" className="text-xs">Lesión</ToggleGroupItem>
+                      <ToggleGroupItem value="PREEXISTENCE" className="text-xs">Preexistencia</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Condición clínica</Label>
+                    <Select value={conditionForPanel ?? ""} onValueChange={(v) => setConditionForPanel((v as DentalCondition) || null)}>
+                      <SelectTrigger ref={panelFirstInputRef} className="h-10" />
+                      <SelectContent>
+                        {CONDITION_OPTIONS.map((c) => (
+                          <SelectItem key={c} value={c}>{DENTAL_CONDITION_LABELS[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Notas (opcional)</Label>
+                    <Input value={conditionNotes} onChange={(e) => setConditionNotes(e.target.value)} className="h-10" placeholder="Notas" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}{selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}</p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>Cancelar</Button>
+                    <Button size="sm" onClick={applyConditionFromPanel} disabled={!conditionForPanel}>Aplicar</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : panelAnchor ? (
         <>
+          <div className="fixed inset-0 z-[100] bg-transparent" aria-hidden onClick={() => setPanelAnchor(null)} />
           <div
-            className="fixed inset-0 z-40"
-            aria-hidden
-            onClick={() => setPanelAnchor(null)}
-          />
-          <div
-            className="fixed z-50 w-80 rounded-lg border bg-popover p-4 shadow-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="odontogram-panel-title"
+            tabIndex={-1}
+            className="fixed z-[101] w-[min(420px,calc(100vw-24px))] min-w-[360px] rounded-lg border border-border bg-white p-0 shadow-lg outline-none"
             style={{
-              left: Math.min(panelAnchor.x, typeof window !== "undefined" ? window.innerWidth - 336 : panelAnchor.x),
-              top: Math.min(panelAnchor.y + 8, typeof window !== "undefined" ? window.innerHeight - 320 : panelAnchor.y + 8),
+              left: Math.min(panelAnchor.x, typeof window !== "undefined" ? window.innerWidth - 424 : panelAnchor.x),
+              top: Math.min(panelAnchor.y + 12, typeof window !== "undefined" ? window.innerHeight - 400 : panelAnchor.y + 12),
             }}
           >
-            {panelAnchor.type === "procedure" ? (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">Cargar procedimiento</h4>
-                <div className="space-y-2">
-                  <Label className="text-xs">Procedimiento</Label>
-                  <Select
-                    value={procedureName}
-                    onValueChange={setProcedureName}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Buscar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROCEDURE_OPTIONS.map((p) => (
-                        <SelectItem key={p.id} value={p.name}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Cantidad</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={procedureQuantity}
-                    onChange={(e) => setProcedureQuantity(Number(e.target.value) || 1)}
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Doctor</Label>
-                  <Input
-                    value={procedureDoctor}
-                    onChange={(e) => setProcedureDoctor(e.target.value)}
-                    className="h-9"
-                    placeholder="Profesional a cargo"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}
-                  {selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}
-                </p>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={applyProcedure}>
-                    Aplicar a pieza/superficies seleccionadas
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>
-                    Cerrar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">Lesión / Preexistencia</h4>
-                <div className="space-y-2">
-                  <Label className="text-xs">Tipo</Label>
-                  <ToggleGroup
-                    type="single"
-                    value={conditionKind}
-                    onValueChange={(v) => v && setConditionKind(v as ConditionKind)}
-                    className="gap-1"
-                  >
-                    <ToggleGroupItem value="LESION" className="text-xs">Lesión</ToggleGroupItem>
-                    <ToggleGroupItem value="PREEXISTENCE" className="text-xs">Preexistencia</ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Condición clínica</Label>
-                  <Select
-                    value={conditionForPanel ?? ""}
-                    onValueChange={(v) => setConditionForPanel((v as DentalCondition) || null)}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONDITION_OPTIONS.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {DENTAL_CONDITION_LABELS[c]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Notas (opcional)</Label>
-                  <Input
-                    value={conditionNotes}
-                    onChange={(e) => setConditionNotes(e.target.value)}
-                    className="h-9"
-                    placeholder="Notas"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}
-                  {selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={applyConditionFromPanel}
-                    disabled={!conditionForPanel}
-                  >
-                    Aplicar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>
-                    Cerrar
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Flecha (punta superior, centrada) */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[8px] border-l-transparent border-r-transparent border-b-border -top-2"
+              aria-hidden
+            />
+            <div className="border-b border-border bg-muted/30 px-5 py-3">
+              <h2 id="odontogram-panel-title" className="text-base font-semibold text-foreground">
+                {panelAnchor.type === "procedure" ? "Cargar procedimiento" : "Lesión / Preexistencia"}
+              </h2>
+            </div>
+            <div className="p-5 space-y-4">
+              {panelAnchor.type === "procedure" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Procedimiento</Label>
+                    <Select value={procedureName} onValueChange={setProcedureName}>
+                      <SelectTrigger ref={panelFirstInputRef} className="h-10" />
+                      <SelectContent>
+                        {PROCEDURE_OPTIONS.map((p) => (
+                          <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Cantidad</Label>
+                    <Input type="number" min={1} value={procedureQuantity} onChange={(e) => setProcedureQuantity(Number(e.target.value) || 1)} className="h-10" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Doctor</Label>
+                    <Input value={procedureDoctor} onChange={(e) => setProcedureDoctor(e.target.value)} className="h-10" placeholder="Profesional a cargo" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}{selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}</p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>Cancelar</Button>
+                    <Button size="sm" onClick={applyProcedure}>Aplicar</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Tipo</Label>
+                    <ToggleGroup type="single" value={conditionKind} onValueChange={(v) => v && setConditionKind(v as ConditionKind)} className="gap-1">
+                      <ToggleGroupItem value="LESION" className="text-xs">Lesión</ToggleGroupItem>
+                      <ToggleGroupItem value="PREEXISTENCE" className="text-xs">Preexistencia</ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Condición clínica</Label>
+                    <Select value={conditionForPanel ?? ""} onValueChange={(v) => setConditionForPanel((v as DentalCondition) || null)}>
+                      <SelectTrigger ref={panelFirstInputRef} className="h-10" />
+                      <SelectContent>
+                        {CONDITION_OPTIONS.map((c) => (
+                          <SelectItem key={c} value={c}>{DENTAL_CONDITION_LABELS[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-foreground">Notas (opcional)</Label>
+                    <Input value={conditionNotes} onChange={(e) => setConditionNotes(e.target.value)} className="h-10" placeholder="Notas" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pieza(s): {Array.from(selectedToothIds).sort().join(", ")}{selectedSurfaces.size > 0 && ` · Superficies: ${Array.from(selectedSurfaces).sort().join(", ")}`}</p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button size="sm" variant="outline" onClick={() => setPanelAnchor(null)}>Cancelar</Button>
+                    <Button size="sm" onClick={applyConditionFromPanel} disabled={!conditionForPanel}>Aplicar</Button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </>
-      )}
+      ) : null}
 
       {/* Lista de registros con Anular */}
       <Card>
