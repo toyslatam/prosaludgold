@@ -42,10 +42,18 @@ export const DENTAL_CONDITION_COLORS: Record<DentalCondition, string> = {
 /** Superficies (opcional): Oclusal, Mesial, Distal, Vestibular, Lingual */
 export type SurfaceCode = "O" | "M" | "D" | "V" | "L";
 
+/** Tipo de registro: procedimiento (prestación) o condición (lesión/preexistencia) */
+export type OdontogramRecordType = "PROCEDURE" | "CONDITION";
+export type ConditionKind = "LESION" | "PREEXISTENCE";
+
 export interface ToothCondition {
   id: string;
   type: DentalCondition;
   surfaces?: SurfaceCode[];
+  /** Si viene de record: procedimiento o condición; por defecto CONDITION (compat) */
+  recordType?: OdontogramRecordType;
+  /** Solo si recordType === "CONDITION" */
+  conditionKind?: ConditionKind;
 }
 
 export interface ToothData {

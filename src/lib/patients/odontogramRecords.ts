@@ -23,7 +23,11 @@ import {
 
 export type { DentalCondition, SurfaceCode };
 
-/** Un registro = una condición aplicada a una pieza (y opcionalmente superficies) en una fecha. */
+/** Tipo de registro: procedimiento (prestación) o condición clínica (lesión/preexistencia) */
+export type OdontogramRecordType = "PROCEDURE" | "CONDITION";
+export type ConditionKind = "LESION" | "PREEXISTENCE";
+
+/** Un registro = condición o procedimiento aplicado a una pieza (y opcionalmente superficies) en una fecha. */
 export interface OdontogramRecord {
   id: string;
   patientId: string;
@@ -35,6 +39,17 @@ export interface OdontogramRecord {
   createdAt: string;
   /** Si está anulado (trazabilidad: no se borra) */
   annulledAt: string | null;
+  /** Procedimiento o condición; registros viejos sin valor = CONDITION */
+  recordType?: OdontogramRecordType;
+  /** Solo si recordType === "CONDITION": lesión o preexistencia */
+  conditionKind?: ConditionKind;
+  /** Si recordType === "PROCEDURE" */
+  procedureId?: string;
+  procedureName?: string;
+  doctorId?: string;
+  /** Cantidad (procedimientos) */
+  quantity?: number;
+  notes?: string;
 }
 
 const STORAGE_KEY = "psg_odontogram_records";
@@ -88,6 +103,19 @@ export function addRecord(
   condition: DentalCondition,
   surfaces: SurfaceCode[] = []
 ): OdontogramRecord {
+  return addConditionRecord(patientId, permanent, toothId, condition, surfaces, "PREEXISTENCE");
+}
+
+/** Registro de tipo condición (lesión o preexistencia) */
+export function addConditionRecord(
+  patientId: string,
+  permanent: boolean,
+  toothId: string,
+  condition: DentalCondition,
+  surfaces: SurfaceCode[] = [],
+  conditionKind: ConditionKind = "PREEXISTENCE",
+  notes?: string
+): OdontogramRecord {
   const records = loadRecords();
   const record: OdontogramRecord = {
     id: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -98,6 +126,45 @@ export function addRecord(
     surfaces: surfaces.length ? surfaces : [],
     createdAt: new Date().toISOString(),
     annulledAt: null,
+    recordType: "CONDITION",
+    conditionKind,
+    notes,
+  };
+  records.push(record);
+  saveRecords(records);
+  return record;
+}
+
+/** Registro de tipo procedimiento (prestación) */
+export function addProcedureRecord(
+  patientId: string,
+  permanent: boolean,
+  toothId: string,
+  surfaces: SurfaceCode[],
+  options: {
+    procedureId?: string;
+    procedureName: string;
+    doctorId?: string;
+    quantity?: number;
+    notes?: string;
+  }
+): OdontogramRecord {
+  const records = loadRecords();
+  const record: OdontogramRecord = {
+    id: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    patientId,
+    permanent,
+    toothId,
+    condition: "obturacion",
+    surfaces: surfaces.length ? surfaces : [],
+    createdAt: new Date().toISOString(),
+    annulledAt: null,
+    recordType: "PROCEDURE",
+    procedureId: options.procedureId,
+    procedureName: options.procedureName,
+    doctorId: options.doctorId,
+    quantity: options.quantity ?? 1,
+    notes: options.notes,
   };
   records.push(record);
   saveRecords(records);
@@ -144,6 +211,8 @@ export function getChartFromRecords(
       id: r.id,
       type: r.condition,
       surfaces: r.surfaces.length ? r.surfaces : undefined,
+      recordType: r.recordType ?? "CONDITION",
+      conditionKind: r.conditionKind,
     });
   });
 
@@ -194,6 +263,7 @@ export function migrateLegacyChartsToRecords(): void {
             surfaces: cond.surfaces ?? [],
             createdAt: new Date().toISOString(),
             annulledAt: null,
+            recordType: "CONDITION",
           });
         });
       });
