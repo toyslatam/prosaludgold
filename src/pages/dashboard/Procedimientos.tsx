@@ -1,12 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   getProcedures,
   saveProcedure,
   createProcedure,
+  deleteProcedure,
+  archiveProcedure,
+  canDeleteProcedure,
+  generateProcedureCode,
   type Procedure,
 } from "@/lib/agenda/procedures";
 import { getCategories, addCategory, type ProcedureCategory } from "@/lib/agenda/procedureCategories";
 import { getDoctors } from "@/lib/agenda/repository";
+import { useDemo } from "@/contexts/DemoContext";
 import { DoctorsMultiSelect } from "@/components/procedimientos/DoctorsMultiSelect";
 import { CategoryManagerModal } from "@/components/procedimientos/CategoryManagerModal";
 import { Button } from "@/components/ui/button";
@@ -25,6 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,8 +50,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import type { VerticalKey } from "@/config/demos/types";
 
 const emptyProcedure: Omit<Procedure, "id"> = {
   code: "",
@@ -49,25 +65,29 @@ const emptyProcedure: Omit<Procedure, "id"> = {
 };
 
 export default function Procedimientos() {
-  const [procedures, setProcedures] = useState<Procedure[]>(() => getProcedures());
-  const [categories, setCategories] = useState<ProcedureCategory[]>(() => getCategories());
+  const { vertical } = useDemo();
+  const v = vertical as VerticalKey;
+  const [procedures, setProcedures] = useState<Procedure[]>(() => getProcedures(v));
+  const [categories, setCategories] = useState<ProcedureCategory[]>(() => getCategories(v));
   const [editing, setEditing] = useState<Procedure | null>(null);
   const [creating, setCreating] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const doctors = useMemo(() => getDoctors(), []);
 
   const refresh = () => {
-    setProcedures(getProcedures());
-    setCategories(getCategories());
+    setProcedures(getProcedures(v));
+    setCategories(getCategories(v));
   };
 
   const handleSaveProcedure = (data: Procedure) => {
     if (data.id) {
-      saveProcedure(data);
+      saveProcedure(v, data);
       toast.success("Procedimiento actualizado");
     } else {
-      createProcedure({
+      createProcedure(v, {
         code: data.code,
+        codeCustom: data.codeCustom,
         category: data.category,
         name: data.name,
         description: data.description,
@@ -86,6 +106,30 @@ export default function Procedimientos() {
   const procedureCountByCategory = (categoryName: string) =>
     procedures.filter((p) => p.category === categoryName).length;
 
+  const handleRequestDelete = (id: string) => setDeletingId(id);
+  const deletingProc = deletingId ? procedures.find((p) => p.id === deletingId) : null;
+  const deleteCheck = deletingId ? canDeleteProcedure(deletingId, v) : null;
+
+  const handleConfirmDelete = () => {
+    if (!deletingId) return;
+    if (!deleteCheck?.canDelete) {
+      toast.error("No se puede eliminar. Use Archivar en su lugar.");
+      return;
+    }
+    deleteProcedure(v, deletingId);
+    refresh();
+    setDeletingId(null);
+    toast.success("Procedimiento eliminado");
+  };
+
+  const handleArchive = () => {
+    if (!deletingId) return;
+    archiveProcedure(v, deletingId);
+    refresh();
+    setDeletingId(null);
+    toast.success("Procedimiento archivado");
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -95,7 +139,7 @@ export default function Procedimientos() {
         </p>
       </div>
 
-      {/* Categorías: acceso compacto al gestor */}
+      {/* Categorías */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Categorías</CardTitle>
@@ -121,6 +165,7 @@ export default function Procedimientos() {
       <CategoryManagerModal
         open={categoriesOpen}
         onOpenChange={setCategoriesOpen}
+        vertical={v}
         categories={categories}
         onCategoriesChange={refresh}
         procedureCountByCategory={procedureCountByCategory}
@@ -146,7 +191,7 @@ export default function Procedimientos() {
                 <TableHead>Descripción</TableHead>
                 <TableHead>Precio</TableHead>
                 <TableHead>Doctores asignados</TableHead>
-                <TableHead className="w-[80px]" />
+                <TableHead className="w-[100px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,9 +218,20 @@ export default function Procedimientos() {
                           .join(", ")}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(p)} aria-label="Editar">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRequestDelete(p.id)}
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -188,7 +244,10 @@ export default function Procedimientos() {
         <ProcedureFormDialog
           procedure={editing ?? ({ ...emptyProcedure, id: "" } as Procedure)}
           isNew={creating}
+          vertical={v}
           doctors={doctors}
+          categories={categories}
+          onCategoriesChange={refresh}
           onSave={handleSaveProcedure}
           onClose={() => {
             setEditing(null);
@@ -196,6 +255,38 @@ export default function Procedimientos() {
           }}
         />
       )}
+
+      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)}>
+        <AlertDialogContent aria-labelledby="delete-procedure-title">
+          <AlertDialogHeader>
+            <AlertDialogTitle id="delete-procedure-title">
+              ¿Eliminar procedimiento &quot;{deletingProc?.name}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteCheck && !deleteCheck.canDelete ? (
+                <>
+                  No se puede eliminar este procedimiento porque ya está asociado a registros en otros módulos
+                  {deleteCheck.reason ? ` (${deleteCheck.reason})` : ""}.
+                  <br />
+                  <strong>Use &quot;Archivar&quot;</strong> para desactivarlo sin borrarlo.
+                </>
+              ) : (
+                "Esta acción no se puede deshacer."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {deleteCheck && !deleteCheck.canDelete ? (
+              <AlertDialogAction onClick={handleArchive}>Archivar</AlertDialogAction>
+            ) : (
+              <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Eliminar
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -203,18 +294,26 @@ export default function Procedimientos() {
 function ProcedureFormDialog({
   procedure,
   isNew,
+  vertical,
   doctors,
+  categories,
+  onCategoriesChange,
   onSave,
   onClose,
 }: {
   procedure: Procedure;
   isNew: boolean;
+  vertical: VerticalKey;
   doctors: { id: string; name: string }[];
+  categories: ProcedureCategory[];
+  onCategoriesChange: () => void;
   onSave: (p: Procedure) => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState<Procedure>({ ...procedure });
+  const [codeCustom, setCodeCustom] = useState(!!procedure.codeCustom);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState<ProcedureCategory[]>(() => categories);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,23 +327,50 @@ function ProcedureFormDialog({
     }
     if (isNew) {
       const { id: _, ...rest } = form;
-      onSave({ ...rest, id: "" } as Procedure);
+      onSave({ ...rest, id: "", codeCustom } as Procedure);
     } else {
-      onSave(form);
+      onSave({ ...form, codeCustom });
     }
   };
 
-  const [categoryOptions, setCategoryOptions] = useState<ProcedureCategory[]>(() => getCategories());
+  const handleCategoryChange = (category: string) => {
+    setForm((p) => ({ ...p, category }));
+    if (!codeCustom) {
+      const code = generateProcedureCode(vertical, category, isNew ? undefined : procedure.id);
+      setForm((p) => ({ ...p, code }));
+    }
+  };
+
+  const handleCodeChange = (value: string) => {
+    setForm((p) => ({ ...p, code: value }));
+    setCodeCustom(true);
+  };
 
   const handleAddCategoryAndSelect = () => {
     const name = newCategoryName.trim();
     if (!name) return;
-    const newCat = addCategory(name);
-    setCategoryOptions(getCategories());
+    const newCat = addCategory(vertical, name);
+    setCategoryOptions(getCategories(vertical));
+    onCategoriesChange();
     setForm((p) => ({ ...p, category: newCat.name }));
+    if (!codeCustom) {
+      const code = generateProcedureCode(vertical, newCat.name, isNew ? undefined : procedure.id);
+      setForm((p) => ({ ...p, code }));
+    }
     setNewCategoryName("");
     toast.success("Categoría agregada");
   };
+
+  useEffect(() => {
+    setCategoryOptions(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    if (isNew && !form.code && form.category && !codeCustom) {
+      const code = generateProcedureCode(vertical, form.category);
+      setForm((p) => ({ ...p, code }));
+    }
+  }, [isNew, form.category]);
 
   return (
     <Dialog open onOpenChange={() => onClose()}>
@@ -258,15 +384,15 @@ function ProcedureFormDialog({
               <Label>Código</Label>
               <Input
                 value={form.code}
-                onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-                placeholder="Ej. CONS"
+                onChange={(e) => handleCodeChange(e.target.value)}
+                placeholder="Ej. CON-01 (auto)"
               />
             </div>
             <div className="space-y-2">
               <Label>Categoría</Label>
               <Select
                 value={form.category}
-                onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}
+                onValueChange={handleCategoryChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccione categoría" />

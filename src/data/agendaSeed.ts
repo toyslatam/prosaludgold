@@ -86,6 +86,8 @@ function generateSeedAppointments(): AppointmentRow[] {
       const duration = [30, 45, 60, 90][Math.floor(Math.random() * 4)];
       const createdAt = new Date().toISOString();
 
+      const procedureIds = ["proc-1", "proc-2", "proc-7"];
+      const procedureId = Math.random() > 0.7 ? procedureIds[Math.floor(Math.random() * procedureIds.length)] : null;
       appointments.push({
         id: `apt-${id++}`,
         patientId: patient.id,
@@ -96,6 +98,7 @@ function generateSeedAppointments(): AppointmentRow[] {
         status,
         branch: doctor.branch,
         reason: reasons[Math.floor(Math.random() * reasons.length)],
+        procedureId,
         chairId: chair?.id ?? null,
         situation: patient.situation,
         confirmations: {

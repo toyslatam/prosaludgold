@@ -62,7 +62,7 @@ export function CareEncounterForm({
   onCancel,
 }: CareEncounterFormProps) {
   const config = getEncounterFormConfig(vertical);
-  const proceduresCatalog = getProcedures();
+  const proceduresCatalog = getProcedures(vertical);
 
   const [patientId, setPatientId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
@@ -134,7 +134,7 @@ export function CareEncounterForm({
     const proceduresNormalized = procedures
       .filter((p) => p.procedureId || p.name)
       .map((p) => {
-        const proc = p.procedureId ? getProcedureById(p.procedureId) : null;
+        const proc = p.procedureId ? getProcedureById(vertical, p.procedureId) : null;
         return {
           ...p,
           name: proc?.name ?? p.name,
@@ -461,7 +461,7 @@ export function CareEncounterForm({
               <Select
                 value={proc.procedureId}
                 onValueChange={(v) => {
-                  const p = getProcedureById(v);
+                  const p = getProcedureById(vertical, v);
                   updateProcedure(proc.id, { procedureId: v, name: p?.name ?? "" });
                 }}
               >

@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from "react";
 import {
-  getCategories,
   addCategory,
   updateCategory,
   deleteCategory,
   type ProcedureCategory,
 } from "@/lib/agenda/procedureCategories";
+import type { VerticalKey } from "@/config/demos/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,7 @@ function hexIsLight(hex: string): boolean {
 export interface CategoryManagerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  vertical: VerticalKey;
   categories: ProcedureCategory[];
   onCategoriesChange: () => void;
   procedureCountByCategory: (categoryName: string) => number;
@@ -51,6 +52,7 @@ export interface CategoryManagerModalProps {
 export function CategoryManagerModal({
   open,
   onOpenChange,
+  vertical,
   categories,
   onCategoriesChange,
   procedureCountByCategory,
@@ -84,7 +86,7 @@ export function CategoryManagerModal({
     }
     setAdding(true);
     try {
-      addCategory(name, newColor);
+      addCategory(vertical, name, newColor);
       onCategoriesChange();
       setNewName("");
       setNewColor("#6b7280");
@@ -112,7 +114,7 @@ export function CategoryManagerModal({
       toast.error("Ya existe una categoría con ese nombre");
       return;
     }
-    updateCategory(editingId, { name, color: editColor });
+    updateCategory(vertical, editingId, { name, color: editColor });
     onCategoriesChange();
     setEditingId(null);
     toast.success("Categoría actualizada");
@@ -132,7 +134,7 @@ export function CategoryManagerModal({
       setDeletingId(null);
       return;
     }
-    deleteCategory(deletingId);
+    deleteCategory(vertical, deletingId);
     onCategoriesChange();
     setDeletingId(null);
     toast.success("Categoría eliminada");
@@ -212,7 +214,8 @@ export function CategoryManagerModal({
           <div className="px-6 pb-2 text-sm text-muted-foreground">
             Listado ({filtered.length})
           </div>
-          <ScrollArea className="flex-1 min-h-0 px-6" style={{ height: "min(450px, 40vh)" }}>
+          <div className="px-6 flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-[min(380px,42vh)] max-h-[420px] w-full">
             <ul
               className="space-y-1 pb-4 pr-2"
               role="list"
@@ -301,6 +304,7 @@ export function CategoryManagerModal({
               )}
             </ul>
           </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 

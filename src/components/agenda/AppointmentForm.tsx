@@ -96,10 +96,10 @@ export function AppointmentForm({
 }: AppointmentFormProps) {
   const { vertical } = useDemo();
   const labels = getAgendaFormLabels(vertical);
-  const procedures = getProcedures();
+  const procedures = getProcedures(vertical as "dental" | "medical" | "spa");
   const procedureIdToReason = (id: string, customReason?: string) => {
     if (id === PROCEDURE_OTHER) return customReason ?? "";
-    return getProcedureById(id)?.name ?? customReason ?? "";
+    return getProcedureById(vertical as "dental" | "medical" | "spa", id)?.name ?? customReason ?? "";
   };
   const initialProcedureId =
     initial?.procedureId && procedures.some((p) => p.id === initial.procedureId)
@@ -109,7 +109,7 @@ export function AppointmentForm({
         : initial?.reason
           ? PROCEDURE_OTHER
           : "";
-  const initialProc = initialProcedureId && initialProcedureId !== PROCEDURE_OTHER ? getProcedureById(initialProcedureId) : null;
+  const initialProc = initialProcedureId && initialProcedureId !== PROCEDURE_OTHER ? getProcedureById(vertical as "dental" | "medical" | "spa", initialProcedureId) : null;
   const defaultDoctorId =
     initial?.doctorId &&
     (!initialProc?.doctorIds?.length || initialProc.doctorIds.includes(initial.doctorId))
@@ -142,7 +142,7 @@ export function AppointmentForm({
   const patientId = form.watch("patientId");
   const procedureId = form.watch("procedureId");
   const selectedPatient = patientId ? patients.find((p) => p.id === patientId) ?? null : initial?.patient ?? null;
-  const selectedProcedure = procedureId && procedureId !== PROCEDURE_OTHER ? getProcedureById(procedureId) : null;
+  const selectedProcedure = procedureId && procedureId !== PROCEDURE_OTHER ? getProcedureById(vertical as "dental" | "medical" | "spa", procedureId) : null;
   const doctorsForProcedure =
     selectedProcedure?.doctorIds?.length
       ? doctors.filter((d) => selectedProcedure.doctorIds.includes(d.id))
@@ -191,7 +191,7 @@ export function AppointmentForm({
                   value={field.value}
                   onChange={(v) => {
                     field.onChange(v);
-                    const proc = v && v !== PROCEDURE_OTHER ? getProcedureById(v) : null;
+                    const proc = v && v !== PROCEDURE_OTHER ? getProcedureById(vertical as "dental" | "medical" | "spa", v) : null;
                     if (proc?.doctorIds?.length && form.getValues("doctorId") && !proc.doctorIds.includes(form.getValues("doctorId"))) {
                       form.setValue("doctorId", proc.doctorIds[0]);
                     }
