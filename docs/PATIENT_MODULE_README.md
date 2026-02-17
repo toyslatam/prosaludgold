@@ -1,49 +1,42 @@
 # Módulo Paciente (estilo Dentalink)
 
-## Odontograma FDI
+## Odontograma interactivo (solo vertical dental)
 
-### Cómo extender condiciones
+Componente: `<DentalOdontogram patientId={id} verticalKey="dental" />` en `src/components/patient/DentalOdontogram.tsx`.
 
-Las condiciones del diente se definen en `src/lib/patients/dentalChart.ts`:
+### Nomenclatura
 
-- **Tipo:** añadir un valor al union type `DentalCondition` (ej. `"puente"`).
-- **Etiqueta:** agregar la entrada en `DENTAL_CONDITION_LABELS`.
-- **Color:** agregar la entrada en `DENTAL_CONDITION_COLORS` (hex).
-- **Toolbar:** en `src/components/patient/DentalChartFDI.tsx`, incluir el nuevo valor en el array `CONDITION_OPTIONS`.
+- **FDI:** implementada (18-11, 21-28, 31-38, 41-48 permanente; 51-55, 61-65, 71-75, 81-85 temporal).
+- **ADA / Continuo:** opción en UI (selector) preparada; valor "próximamente".
 
-Ejemplo para añadir "Puente":
+### Superficies
 
-```ts
-// dentalChart.ts
-export type DentalCondition =
-  | "caries"
-  | "obturacion"
-  // ...
-  | "puente";
+V (vestibular), L (palatino/lingual), M (mesial), D (distal), O (oclusal/incisal). Se eligen por checkboxes al aplicar una condición.
 
-export const DENTAL_CONDITION_LABELS: Record<DentalCondition, string> = {
-  // ...
-  puente: "Puente",
-};
+### Condiciones
 
-export const DENTAL_CONDITION_COLORS: Record<DentalCondition, string> = {
-  // ...
-  puente: "#0d9488",
-};
-```
+Definidas en `src/lib/patients/dentalChart.ts`: caries, obturacion, corona, endodoncia, extraccion, ausente, sellante, implante, protesis. Para añadir una nueva: extender `DentalCondition`, `DENTAL_CONDITION_LABELS`, `DENTAL_CONDITION_COLORS` y el array `CONDITION_OPTIONS` en `DentalOdontogram.tsx`.
 
-```tsx
-// DentalChartFDI.tsx - en CONDITION_OPTIONS
-const CONDITION_OPTIONS: DentalCondition[] = [
-  "caries",
-  // ...
-  "puente",
-];
-```
+### Modelo JSON (registros con historial)
 
-### Persistencia
+En `src/lib/patients/odontogramRecords.ts`:
 
-El odontograma se guarda en `localStorage` bajo la clave `psg_dental_charts`. La estructura es un array de `PatientDentalChart` (patientId, permanent, teeth, updatedAt). Cada diente tiene un objeto con `conditions[]` (id, type, surfaces opcional).
+- **OdontogramRecord:** id, patientId, permanent, toothId, condition, surfaces[], createdAt, annulledAt (null = activo).
+- No se borran registros: solo se **anulan** (annulledAt) para trazabilidad.
+- Funciones: getActiveRecords, getAllRecords, addRecord, annulRecord, getChartFromRecords, migrateLegacyChartsToRecords.
+
+### Persistencia (demo)
+
+- **Registros:** `localStorage` clave `psg_odontogram_records` (array de OdontogramRecord).
+- **Compatibilidad:** los datos del chart legacy (`psg_dental_charts`) se migran a registros la primera vez que se abre el odontograma.
+- El PDF de historia clínica usa `getChartFromRecords(patientId, true)` para incluir el estado actual del odontograma.
+
+### Uso
+
+1. Seleccionar pieza(s): clic en diente; Ctrl+clic para varias.
+2. Opcional: marcar superficies (V, L, M, D, O).
+3. Elegir condición en la barra y pulsar **Aplicar**.
+4. En la lista inferior: ver todos los registros y **Anular** los que corresponda (no se eliminan, quedan con fecha de anulación).
 
 ---
 

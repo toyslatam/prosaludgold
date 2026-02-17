@@ -6,7 +6,8 @@ import { jsPDF } from "jspdf";
 import type { Patient } from "@/data/mockData";
 import { mockDoctors } from "@/data/mockData";
 import { getClinicalEventsByPatient, type ClinicalEvent } from "./clinicalHistory";
-import { getDentalChart, DENTAL_CONDITION_LABELS } from "./dentalChart";
+import { DENTAL_CONDITION_LABELS } from "./dentalChart";
+import { getChartFromRecords } from "./odontogramRecords";
 import { getEvolucionesByPatient } from "./evoluciones";
 import { getClinicalDocumentsByPatient } from "./clinicalDocuments";
 import { getConsentimientosByPatient } from "./consentimientos";
@@ -142,7 +143,7 @@ export function generateClinicalHistoryPdf(patient: Patient): void {
   doc.setFont("helvetica", "bold");
   doc.text("Odontograma", MARGIN, y);
   pushNewLine();
-  const chartPermanent = getDentalChart(patient.id, true);
+  const chartPermanent = getChartFromRecords(patient.id, true);
   const hasAny = Object.values(chartPermanent.teeth).some((t) => t.conditions.length > 0);
   if (!hasAny) {
     text("No disponible.");

@@ -5,7 +5,7 @@ import { permissions } from "@/lib/patients/permissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClinicalTimeline } from "@/components/patient/ClinicalTimeline";
-import { DentalChartFDI } from "@/components/patient/DentalChartFDI";
+import { DentalOdontogram } from "@/components/patient/DentalOdontogram";
 import { EvolucionesList } from "@/components/patient/EvolucionesList";
 import { AntecedentesForm } from "@/components/patient/AntecedentesForm";
 import { RecetasList } from "@/components/patient/RecetasList";
@@ -55,7 +55,7 @@ export default function PatientFicha() {
           <AntecedentesForm patientId={patient.id} />
         </TabsContent>
         <TabsContent value="odontograma" className="mt-4">
-          <DentalChartFDI patientId={patient.id} />
+          <DentalOdontogram patientId={patient.id} verticalKey="dental" />
         </TabsContent>
         <TabsContent value="periodontograma" className="mt-4">
           <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Periodontograma (próximamente)</CardContent></Card>
