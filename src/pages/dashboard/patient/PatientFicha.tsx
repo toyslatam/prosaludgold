@@ -1,16 +1,33 @@
 import { useOutletContext } from "react-router-dom";
 import type { Patient } from "@/data/mockData";
+import { useDemo } from "@/contexts/DemoContext";
 import { permissions } from "@/lib/patients/permissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClinicalTimeline } from "@/components/patient/ClinicalTimeline";
 import { DentalChartFDI } from "@/components/patient/DentalChartFDI";
+import { EvolucionesList } from "@/components/patient/EvolucionesList";
+import { AntecedentesForm } from "@/components/patient/AntecedentesForm";
+import { RecetasList } from "@/components/patient/RecetasList";
+import { DocumentosClinicosList } from "@/components/patient/DocumentosClinicosList";
+import { ConsentimientosList } from "@/components/patient/ConsentimientosList";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function PatientFicha() {
   const { patient } = useOutletContext<{ patient: Patient }>();
+  const { isDental } = useDemo();
   const canViewMedical = permissions.canViewMedicalHistory;
+
+  if (!isDental) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          La ficha clínica con odontograma, evoluciones y consentimientos está disponible solo en el vertical dental.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -32,10 +49,10 @@ export default function PatientFicha() {
           <ClinicalTimeline patientId={patient.id} />
         </TabsContent>
         <TabsContent value="evoluciones" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Evoluciones (próximamente)</CardContent></Card>
+          <EvolucionesList patientId={patient.id} />
         </TabsContent>
         <TabsContent value="antecedentes" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Antecedentes médicos (próximamente)</CardContent></Card>
+          <AntecedentesForm patientId={patient.id} />
         </TabsContent>
         <TabsContent value="odontograma" className="mt-4">
           <DentalChartFDI patientId={patient.id} />
@@ -47,13 +64,13 @@ export default function PatientFicha() {
           <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Rx y Documentos (próximamente)</CardContent></Card>
         </TabsContent>
         <TabsContent value="recetas" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Recetas (próximamente)</CardContent></Card>
+          <RecetasList patientId={patient.id} />
         </TabsContent>
         <TabsContent value="documentos" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Documentos Clínicos (próximamente)</CardContent></Card>
+          <DocumentosClinicosList patientId={patient.id} />
         </TabsContent>
         <TabsContent value="consentimientos" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Consentimientos (próximamente)</CardContent></Card>
+          <ConsentimientosList patientId={patient.id} />
         </TabsContent>
       </Tabs>
     </div>

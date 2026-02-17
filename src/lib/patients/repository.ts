@@ -20,3 +20,19 @@ export function getPatients(): Patient[] {
 export function getPatientById(id: string): Patient | undefined {
   return loadPatients().find((p) => p.id === id);
 }
+
+export function updatePatient(
+  id: string,
+  patch: Partial<Pick<Patient, "name" | "cedula" | "phone" | "email" | "address" | "benefits" | "branch" | "assignedDoctorId" | "collaborators" | "lastVisit" | "nextAppointment">>
+): Patient | undefined {
+  const list = loadPatients();
+  const idx = list.findIndex((p) => p.id === id);
+  if (idx === -1) return undefined;
+  list[idx] = { ...list[idx], ...patch };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  } catch {
+    return undefined;
+  }
+  return list[idx];
+}

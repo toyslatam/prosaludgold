@@ -118,13 +118,13 @@ export function PatientHeader({
             )}
             {onHistoriaClinica && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                className="gap-2 border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10"
+                className="gap-2 border-2 border-primary-foreground/60 bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 font-medium shadow-sm"
                 onClick={onHistoriaClinica}
               >
-                <FileDown className="h-4 w-4" />
-                Historia clínica
+                <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+                Descargar historia clínica
               </Button>
             )}
           </div>

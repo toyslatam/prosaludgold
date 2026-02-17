@@ -1,24 +1,26 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-const tabs = [
-  { to: "datos", label: "Datos personales" },
-  { to: "ficha", label: "Ficha clínica" },
-  { to: "planes", label: "Planes de tratamiento" },
-  { to: "facturacion", label: "Facturación y pagos" },
-  { to: "recibir-pago", label: "Recibir pago" },
+const allTabs = [
+  { to: "datos", label: "Datos personales", dentalOnly: false },
+  { to: "ficha", label: "Ficha clínica", dentalOnly: true },
+  { to: "planes", label: "Planes de tratamiento", dentalOnly: false },
+  { to: "facturacion", label: "Facturación y pagos", dentalOnly: false },
+  { to: "recibir-pago", label: "Recibir pago", dentalOnly: false },
 ] as const;
 
 interface PatientTabsProps {
   basePath: string;
+  isDental?: boolean;
   className?: string;
 }
 
-export function PatientTabs({ basePath, className }: PatientTabsProps) {
+export function PatientTabs({ basePath, isDental = true, className }: PatientTabsProps) {
+  const tabs = isDental ? allTabs : allTabs.filter((t) => !t.dentalOnly);
   return (
     <nav
       className={cn(
-        "border-b border-border bg-background",
+        "border-b border-border bg-background shrink-0",
         className
       )}
       aria-label="Tabs del paciente"

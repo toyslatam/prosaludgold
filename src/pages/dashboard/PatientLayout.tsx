@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import { getPatientById } from "@/lib/patients/repository";
+import { generateClinicalHistoryPdf } from "@/lib/patients/generateClinicalHistoryPdf";
 import { PatientHeader } from "@/components/patient/PatientHeader";
 import { PatientTabs } from "@/components/patient/PatientTabs";
 import { toast } from "sonner";
@@ -9,10 +10,11 @@ import { toast } from "sonner";
 export default function PatientLayout() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  const { basePath: demoBasePath } = useDemo();
+  const { basePath: demoBasePath, vertical } = useDemo();
   const patient = patientId ? getPatientById(patientId) : undefined;
 
   const basePath = `${demoBasePath}/pacientes/${patientId}`;
+  const isDental = vertical === "dental";
 
   const handleAgendar = useCallback(() => {
     navigate(`${demoBasePath}/agenda?patientId=${patientId}`);
@@ -20,15 +22,14 @@ export default function PatientLayout() {
   }, [navigate, patientId, demoBasePath]);
 
   const handleHistoriaClinica = useCallback(() => {
-    const content = `HISTORIA CLÍNICA - ${patient.name}\nID: ${patient.id}\nCédula: ${patient.cedula}\nGenerado: ${new Date().toLocaleString("es")}\n\n(Export mock - integrar con PDF real según backend)`;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `historia-clinica-${patient.id}-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Historia clínica descargada");
+    if (!patient) return;
+    try {
+      generateClinicalHistoryPdf(patient);
+      toast.success("Historia clínica descargada");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al generar el PDF");
+    }
   }, [patient]);
 
   if (!patientId) {
@@ -52,14 +53,16 @@ export default function PatientLayout() {
 
   return (
     <div className="flex flex-col min-h-0">
-      <PatientHeader
-        patient={patient}
-        basePath={basePath}
-        onAgendar={handleAgendar}
-        onHistoriaClinica={handleHistoriaClinica}
-      />
-      <PatientTabs basePath={basePath} />
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/20">
+      <div className="sticky top-0 z-20 shrink-0 bg-background shadow-sm">
+        <PatientHeader
+          patient={patient}
+          basePath={basePath}
+          onAgendar={handleAgendar}
+          onHistoriaClinica={isDental ? handleHistoriaClinica : undefined}
+        />
+        <PatientTabs basePath={basePath} isDental={isDental} />
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/20 min-h-0">
         <Outlet context={{ patient }} />
       </div>
     </div>

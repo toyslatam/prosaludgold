@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Patient } from "@/data/mockData";
 import { mockDoctors } from "@/data/mockData";
 import { useOutletContext } from "react-router-dom";
@@ -13,11 +13,62 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { getPatientById, updatePatient } from "@/lib/patients/repository";
+import { getClinicalEventsByPatient, type ClinicalEvent } from "@/lib/patients/clinicalHistory";
+
+const BENEFITS_OPTIONS = ["Convenio oro", "Seguro dental", "Particular", "Otro"];
+const BRANCH_OPTIONS = ["Sede Central", "Sede Norte", "Sede Sur"];
+
+function getEventTypeLabel(e: ClinicalEvent): string {
+  switch (e.type) {
+    case "cita_agendada":
+      return "Cita";
+    case "prestacion_realizada":
+      return "Atención";
+    case "presupuesto_creado":
+      return "Presupuesto";
+    default:
+      return "—";
+  }
+}
+
+function getEventNote(e: ClinicalEvent): string {
+  switch (e.type) {
+    case "cita_agendada":
+      return e.reason ?? e.status ?? "—";
+    case "prestacion_realizada":
+      return e.prestacion;
+    case "presupuesto_creado":
+      return e.label ?? "—";
+    default:
+      return "—";
+  }
+}
 
 export default function PatientData() {
-  const { patient } = useOutletContext<{ patient: Patient }>();
+  const { patient: contextPatient } = useOutletContext<{ patient: Patient }>();
   const [editOpen, setEditOpen] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const [editForm, setEditForm] = useState({
+    benefits: "",
+    branch: "",
+    assignedDoctorId: "",
+    collaborators: "",
+  });
+  const patient = useMemo(
+    () => getPatientById(contextPatient.id) ?? contextPatient,
+    [contextPatient, refresh]
+  );
 
   const birthDateFormatted = patient.birthDate
     ? format(parseISO(patient.birthDate), "d MMM yyyy", { locale: es })
@@ -27,66 +78,140 @@ export default function PatientData() {
     patient.assignedDoctorId &&
     mockDoctors.find((d) => d.id === patient.assignedDoctorId)?.name;
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const visitHistory = useMemo(() => {
+    const events = getClinicalEventsByPatient(patient.id).filter((e) => !e.cancelled);
+    return [...events].sort(
+      (a, b) => b.date.localeCompare(a.date) || (b.time || "").localeCompare(a.time || "")
+    );
+  }, [patient.id]);
+
+  const handleEditOpen = (open: boolean) => {
+    setEditOpen(open);
+    if (open) {
+      setEditForm({
+        benefits: patient.benefits ?? "",
+        branch: patient.branch ?? "",
+        assignedDoctorId: patient.assignedDoctorId ?? "",
+        collaborators: patient.collaborators?.join(", ") ?? "",
+      });
+    }
+  };
+
+  const handleEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.success("Datos guardados (demo)");
-    setEditOpen(false);
+    const collaborators = editForm.collaborators
+      ? editForm.collaborators.split(",").map((s) => s.trim()).filter(Boolean)
+      : undefined;
+    const updated = updatePatient(patient.id, {
+      benefits: editForm.benefits || undefined,
+      branch: editForm.branch || undefined,
+      assignedDoctorId: editForm.assignedDoctorId || undefined,
+      collaborators: collaborators?.length ? collaborators : undefined,
+    });
+    if (updated) {
+      setRefresh((r) => r + 1);
+      toast.success("Datos guardados");
+      setEditOpen(false);
+    } else {
+      toast.error("Error al guardar");
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <Dialog open={editOpen} onOpenChange={handleEditOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
               Editar
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar datos personales</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Formulario de edición (mock). Los cambios no se persisten aún.
-              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nombre</label>
-                  <input
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={patient.name}
-                    readOnly
-                  />
+                  <Label>Nombre</Label>
+                  <Input defaultValue={patient.name} readOnly className="bg-muted" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Cédula</label>
-                  <input
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={patient.cedula}
-                  />
+                  <Label>Cédula</Label>
+                  <Input name="cedula" defaultValue={patient.cedula} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Teléfono</label>
-                  <input
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={patient.phone}
-                  />
+                  <Label>Teléfono</Label>
+                  <Input name="phone" defaultValue={patient.phone} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <input
-                    type="email"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={patient.email}
-                  />
+                  <Label>Email</Label>
+                  <Input name="email" type="email" defaultValue={patient.email} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <label className="text-sm font-medium">Dirección</label>
-                  <input
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    defaultValue={patient.address ?? ""}
-                    placeholder="Opcional"
+                  <Label>Dirección</Label>
+                  <Input name="address" defaultValue={patient.address ?? ""} placeholder="Opcional" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Convenio / Beneficio</Label>
+                  <Select
+                    value={editForm.benefits}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, benefits: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BENEFITS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sede / Sucursal</Label>
+                  <Select
+                    value={editForm.branch}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, branch: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Profesional a cargo</Label>
+                  <Select
+                    value={editForm.assignedDoctorId}
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, assignedDoctorId: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar doctor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockDoctors.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Colaboradores (separados por coma)</Label>
+                  <Input
+                    value={editForm.collaborators}
+                    onChange={(e) => setEditForm((f) => ({ ...f, collaborators: e.target.value }))}
+                    placeholder="Ej: Dr. X, Dra. Y"
                   />
                 </div>
               </div>
@@ -183,15 +308,48 @@ export default function PatientData() {
         <CardHeader>
           <CardTitle className="text-lg">Visitas</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <p className="text-sm text-muted-foreground">Última visita</p>
-            <p className="font-medium">{patient.lastVisit || "—"}</p>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Última visita</p>
+              <p className="font-medium">{patient.lastVisit || "—"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Próxima cita</p>
+              <p className="font-medium">{patient.nextAppointment || "—"}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Próxima cita</p>
-            <p className="font-medium">{patient.nextAppointment || "—"}</p>
-          </div>
+          <p className="text-sm font-medium text-muted-foreground">Historial de visitas</p>
+          {visitHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin visitas registradas.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-3 py-2 text-left font-medium">Fecha</th>
+                    <th className="px-3 py-2 text-left font-medium">Doctor</th>
+                    <th className="px-3 py-2 text-left font-medium">Tipo</th>
+                    <th className="px-3 py-2 text-left font-medium">Nota breve</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visitHistory.map((e) => (
+                    <tr key={e.id} className="border-b last:border-0">
+                      <td className="px-3 py-2">
+                        {e.date} {e.time}
+                      </td>
+                      <td className="px-3 py-2">
+                        {"doctorName" in e ? e.doctorName : "—"}
+                      </td>
+                      <td className="px-3 py-2">{getEventTypeLabel(e)}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{getEventNote(e)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
