@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { OdontogramSVG } from "@/components/patient/OdontogramSVG";
 import {
   Select,
   SelectContent,
@@ -122,6 +123,14 @@ export function DentalOdontogram({
     [toggleTooth]
   );
 
+  const handleSurfaceClick = useCallback(
+    (toothId: string, surface: SurfaceCode, e: React.MouseEvent) => {
+      toggleTooth(toothId, e.ctrlKey || e.metaKey);
+      toggleSurface(surface);
+    },
+    [toggleTooth, toggleSurface]
+  );
+
   const toggleSurface = useCallback((code: SurfaceCode) => {
     setSelectedSurfaces((prev) => {
       const next = new Set(prev);
@@ -163,13 +172,6 @@ export function DentalOdontogram({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  const getToothColor = (toothId: string): string => {
-    const data = chart.teeth[toothId];
-    if (!data?.conditions.length) return "transparent";
-    const last = data.conditions[data.conditions.length - 1];
-    return DENTAL_CONDITION_COLORS[last.type] ?? "transparent";
-  };
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -277,57 +279,20 @@ export function DentalOdontogram({
         </Card>
       )}
 
-      {/* Grilla FDI SVG */}
+      {/* Odontograma visual tipo Dentalink (SVG con superficies) */}
       <Card>
         <CardContent className="p-4 md:p-6 overflow-x-auto">
-          <div className="inline-block min-w-[320px]">
-            <div className="flex justify-center gap-0.5 mb-1">
-              {upperRight.map((id) => (
-                <ToothSlot
-                  key={id}
-                  toothId={id}
-                  fill={getToothColor(id)}
-                  selected={selectedToothIds.has(id)}
-                  onClick={(e) => handleToothClick(e, id)}
-                />
-              ))}
-              {upperLeft.map((id) => (
-                <ToothSlot
-                  key={id}
-                  toothId={id}
-                  fill={getToothColor(id)}
-                  selected={selectedToothIds.has(id)}
-                  onClick={(e) => handleToothClick(e, id)}
-                />
-              ))}
-            </div>
-            <p className="text-center text-[10px] text-muted-foreground mb-2">
-              Maxilar
-            </p>
-            <p className="text-center text-[10px] text-muted-foreground mt-4">
-              Mandíbula
-            </p>
-            <div className="flex justify-center gap-0.5 mt-1">
-              {lowerLeft.map((id) => (
-                <ToothSlot
-                  key={id}
-                  toothId={id}
-                  fill={getToothColor(id)}
-                  selected={selectedToothIds.has(id)}
-                  onClick={(e) => handleToothClick(e, id)}
-                />
-              ))}
-              {lowerRight.map((id) => (
-                <ToothSlot
-                  key={id}
-                  toothId={id}
-                  fill={getToothColor(id)}
-                  selected={selectedToothIds.has(id)}
-                  onClick={(e) => handleToothClick(e, id)}
-                />
-              ))}
-            </div>
-          </div>
+          <OdontogramSVG
+            upperRight={upperRight}
+            upperLeft={upperLeft}
+            lowerLeft={lowerLeft}
+            lowerRight={lowerRight}
+            teeth={chart.teeth}
+            selectedToothIds={selectedToothIds}
+            selectedSurfaces={selectedSurfaces}
+            onToothClick={handleToothClick}
+            onSurfaceClick={handleSurfaceClick}
+          />
         </CardContent>
       </Card>
 
@@ -358,37 +323,6 @@ export function DentalOdontogram({
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function ToothSlot({
-  toothId,
-  fill,
-  selected,
-  onClick,
-}: {
-  toothId: string;
-  fill: string;
-  selected: boolean;
-  onClick: (e: React.MouseEvent) => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "w-8 h-10 rounded border-2 flex items-center justify-center text-[10px] font-medium transition-colors",
-        "border-border hover:border-primary hover:bg-primary/5",
-        selected && "ring-2 ring-primary ring-offset-2 border-primary"
-      )}
-      style={{
-        backgroundColor: fill ? `${fill}30` : undefined,
-        borderColor: fill || undefined,
-      }}
-      onClick={onClick}
-      title={`Pieza ${toothId} (Ctrl+clic para multi)`}
-    >
-      {toothId}
-    </button>
   );
 }
 
