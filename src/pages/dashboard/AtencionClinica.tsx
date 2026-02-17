@@ -4,6 +4,7 @@ import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients, getPatientById } from "@/lib/patients/repository";
 import { getDoctors } from "@/lib/agenda/repository";
+import { applyConsumptionFromEncounter } from "@/lib/inventory/consumption";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
@@ -43,7 +44,21 @@ const AtencionClinica = () => {
   );
 
   const handleSave = (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
-    saveEncounter(payload);
+    const encounter = saveEncounter(payload);
+    if (payload.status === "COMPLETED" && payload.inventoryUsed?.length) {
+      const patient = getPatientById(encounter.patientId);
+      const doctors = getDoctors();
+      const professional = doctors.find((d) => d.id === encounter.professionalId);
+      applyConsumptionFromEncounter(vertical, {
+        encounterId: encounter.id,
+        refLabel: `Atención #${encounter.id.slice(-6)}`,
+        inventoryUsed: encounter.inventoryUsed,
+        patientId: encounter.patientId,
+        patientName: patient?.name,
+        professionalId: encounter.professionalId,
+        professionalName: professional?.name,
+      });
+    }
     setShowForm(false);
   };
 

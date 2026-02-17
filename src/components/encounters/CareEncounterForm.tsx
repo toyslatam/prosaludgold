@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { VerticalKey } from "@/config/demos";
 import type { EncounterFormConfig } from "@/config/encounters";
 import { getEncounterFormConfig } from "@/config/encounters";
@@ -28,6 +42,7 @@ import type {
 import { getProcedures, getProcedureById } from "@/lib/agenda/procedures";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
+import { getInventoryItems } from "@/lib/inventory/items";
 import { PrescriptionSection } from "./PrescriptionSection";
 
 type PatientOption = { id: string; name: string };
@@ -63,6 +78,7 @@ export function CareEncounterForm({
 }: CareEncounterFormProps) {
   const config = getEncounterFormConfig(vertical);
   const proceduresCatalog = getProcedures(vertical);
+  const inventoryItems = useMemo(() => getInventoryItems(vertical), [vertical]);
 
   const [patientId, setPatientId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
@@ -75,6 +91,7 @@ export function CareEncounterForm({
   const [clinicalNotes, setClinicalNotes] = useState("");
   const [verticalData, setVerticalData] = useState<CareEncounterVerticalData>({});
   const [saving, setSaving] = useState(false);
+  const [openInvPopoverId, setOpenInvPopoverId] = useState<string | null>(null);
 
   const addProcedure = () => {
     setProcedures((prev) => [
@@ -89,7 +106,7 @@ export function CareEncounterForm({
     setProcedures((prev) => prev.filter((p) => p.id !== id));
   };
   const addInventory = () => {
-    setInventoryUsed((prev) => [...prev, { id: nextInvId(), name: "", quantity: 1 }]);
+    setInventoryUsed((prev) => [...prev, { id: nextInvId(), name: "", quantity: 1, productId: undefined, unit: undefined }]);
   };
   const updateInventory = (id: string, patch: Partial<InventoryUsedItem>) => {
     setInventoryUsed((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -114,6 +131,21 @@ export function CareEncounterForm({
       toast.error("Seleccione un profesional");
       return false;
     }
+    const invList = getInventoryItems(vertical);
+    for (const inv of inventoryUsed) {
+      if (!inv.name?.trim()) continue;
+      if (inv.quantity <= 0) {
+        toast.error("La cantidad debe ser mayor a 0");
+        return false;
+      }
+      if (inv.productId) {
+        const item = invList.find((i) => i.id === inv.productId);
+        if (item && inv.quantity > item.stock) {
+          toast.error(`Stock insuficiente de "${inv.name}". Disponible: ${item.stock} ${item.unit}`);
+          return false;
+        }
+      }
+    }
     if (config.showPrescription && verticalData.medical?.prescription?.items?.length) {
       for (const item of verticalData.medical.prescription.items) {
         if (!item.medicationName?.trim()) {
@@ -129,6 +161,15 @@ export function CareEncounterForm({
     return true;
   };
 
+  const hasInventoryOverStock = (): boolean => {
+    const invList = getInventoryItems(vertical);
+    return inventoryUsed.some((inv) => {
+      if (!inv.productId || inv.quantity <= 0) return false;
+      const item = invList.find((i) => i.id === inv.productId);
+      return item ? inv.quantity > item.stock : false;
+    });
+  };
+
   const buildEncounter = (status: "DRAFT" | "COMPLETED"): CareEncounterPayload => {
     const startAt = `${startDate}T${startTime}:00`;
     const proceduresNormalized = procedures
@@ -140,7 +181,15 @@ export function CareEncounterForm({
           name: proc?.name ?? p.name,
         };
       });
-    const inventoryNormalized = inventoryUsed.filter((i) => i.name.trim());
+    const inventoryNormalized = inventoryUsed
+      .filter((i) => i.name.trim())
+      .map((i) => ({
+        ...i,
+        productId: i.productId,
+        name: i.name,
+        quantity: i.quantity,
+        unit: i.unit,
+      }));
 
     return {
       vertical,
@@ -505,40 +554,114 @@ export function CareEncounterForm({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Inventario consumido</CardTitle>
+          <p className="text-xs text-muted-foreground">Seleccione producto del inventario del vertical. El stock se descuenta al finalizar la atención.</p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {inventoryUsed.map((inv) => (
-            <div key={inv.id} className="flex gap-2 items-center flex-wrap">
-              <Input
-                placeholder="Producto / material"
-                className="flex-1 min-w-[160px]"
-                value={inv.name}
-                onChange={(e) => updateInventory(inv.id, { name: e.target.value })}
-              />
-              <Input
-                type="number"
-                min={0}
-                className="w-24"
-                value={inv.quantity}
-                onChange={(e) =>
-                  updateInventory(inv.id, { quantity: Number(e.target.value) || 0 })
-                }
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeInventory(inv.id)}
-                aria-label="Quitar"
-              >
-                <Trash2 className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            </div>
-          ))}
+          {inventoryUsed.map((inv) => {
+            const selectedItem = inv.productId ? inventoryItems.find((i) => i.id === inv.productId) : null;
+            const stockStatus = selectedItem
+              ? selectedItem.stock <= selectedItem.minStock
+                ? "Bajo stock"
+                : "OK"
+              : null;
+            return (
+              <div key={inv.id} className="flex gap-2 items-center flex-wrap">
+                <Popover open={openInvPopoverId === inv.id} onOpenChange={(open) => setOpenInvPopoverId(open ? inv.id : null)}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "flex-1 min-w-[200px] justify-between font-normal",
+                        !inv.name && "text-muted-foreground"
+                      )}
+                    >
+                      {inv.name || "Buscar producto..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[360px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar por nombre, categoría o proveedor..." />
+                      <CommandList>
+                        <CommandEmpty>Sin resultados.</CommandEmpty>
+                        <CommandGroup>
+                          {inventoryItems.map((item) => (
+                            <CommandItem
+                              key={item.id}
+                              value={`${item.name} ${item.category} ${item.supplier}`}
+                              onSelect={() => {
+                                updateInventory(inv.id, {
+                                  productId: item.id,
+                                  name: item.name,
+                                  unit: item.unit,
+                                  quantity: 1,
+                                });
+                                setOpenInvPopoverId(null);
+                              }}
+                            >
+                              <div className="flex flex-col gap-0.5 w-full">
+                                <span className="font-medium">{item.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Stock: {item.stock} {item.unit}
+                                  {item.stock <= item.minStock ? (
+                                    <span className="text-destructive ml-1">· Bajo stock</span>
+                                  ) : (
+                                    <span className="text-success ml-1">· OK</span>
+                                  )}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-24"
+                    value={inv.quantity}
+                    onChange={(e) =>
+                      updateInventory(inv.id, { quantity: Number(e.target.value) || 0 })
+                    }
+                  />
+                  {selectedItem && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      / {selectedItem.stock} {selectedItem.unit}
+                    </span>
+                  )}
+                </div>
+                {stockStatus && (
+                  <span className={cn(
+                    "text-xs",
+                    stockStatus === "Bajo stock" ? "text-destructive" : "text-muted-foreground"
+                  )}>
+                    {stockStatus}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeInventory(inv.id)}
+                  aria-label="Quitar"
+                >
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            );
+          })}
           <Button type="button" variant="outline" size="sm" onClick={addInventory}>
             <Plus className="h-4 w-4 mr-1" />
             Agregar producto
           </Button>
+          {hasInventoryOverStock() && (
+            <p className="text-sm text-destructive">La cantidad supera el stock en al menos un producto. Reduzca la cantidad o quite el ítem para poder finalizar.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -572,7 +695,7 @@ export function CareEncounterForm({
         <Button variant="secondary" onClick={handleSaveDraft} disabled={saving}>
           Guardar borrador
         </Button>
-        <Button onClick={handleFinalize} disabled={saving}>
+        <Button onClick={handleFinalize} disabled={saving || hasInventoryOverStock()}>
           Finalizar
         </Button>
       </div>
