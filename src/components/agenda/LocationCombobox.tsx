@@ -35,7 +35,7 @@ export function LocationCombobox({
   className,
 }: LocationComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  const selected = value && value !== NONE_VALUE ? locations.find((l) => l.id === value) : null;
+  const selected = value ? locations.find((l) => l.id === value) : null;
 
   return (
     <div className={cn("flex gap-2", className)}>

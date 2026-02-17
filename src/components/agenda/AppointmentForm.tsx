@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AppointmentWithDetails } from "@/types/agenda";
 import type { DoctorRow } from "@/lib/agenda/types";
@@ -11,11 +11,13 @@ import type { PatientRow } from "@/lib/agenda/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useDemo } from "@/contexts/DemoContext";
+import { getAgendaFormLabels } from "@/config/agendaFormLabels";
 import { PatientAutocomplete } from "./PatientAutocomplete";
 import { LocationCombobox } from "./LocationCombobox";
+import { ProcedureCombobox, PROCEDURE_OTHER } from "./ProcedureCombobox";
+import { DoctorCombobox } from "./DoctorCombobox";
 import { getProcedures, getProcedureById } from "@/lib/agenda/procedures";
-
-const PROCEDURE_OTHER = "__other__";
 
 const STATUS_OPTIONS = [
   { value: "pendiente", label: "Pendiente" },
@@ -92,6 +94,8 @@ export function AppointmentForm({
   onEnviarConfirmacion,
   isEdit = false,
 }: AppointmentFormProps) {
+  const { vertical } = useDemo();
+  const labels = getAgendaFormLabels(vertical);
   const procedures = getProcedures();
   const procedureIdToReason = (id: string, customReason?: string) => {
     if (id === PROCEDURE_OTHER) return customReason ?? "";
@@ -180,43 +184,22 @@ export function AppointmentForm({
           name="procedureId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Procedimiento</FormLabel>
-              <Select
-                onValueChange={(v) => {
-                  field.onChange(v);
-                  const proc = v && v !== PROCEDURE_OTHER ? getProcedureById(v) : null;
-                  if (proc?.doctorIds?.length && form.getValues("doctorId") && !proc.doctorIds.includes(form.getValues("doctorId"))) {
-                    form.setValue("doctorId", proc.doctorIds[0]);
-                  }
-                }}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione procedimiento" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {Array.from(
-                    procedures.reduce((acc, p) => {
-                      if (!acc.has(p.category)) acc.set(p.category, []);
-                      acc.get(p.category)!.push(p);
-                      return acc;
-                    }, new Map<string, typeof procedures>() as Map<string, typeof procedures>)
-                  ).map(([category, list]) => (
-                    <SelectGroup key={category}>
-                      <SelectLabel>{category}</SelectLabel>
-                      {list.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          <span className="inline-block w-3 h-3 rounded-full mr-2 align-middle" style={{ backgroundColor: p.color }} />
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
-                  <SelectItem value={PROCEDURE_OTHER}>Otro (especificar)</SelectItem>
-                </SelectContent>
-              </Select>
+              <FormLabel>{labels.procedureLabel}</FormLabel>
+              <FormControl>
+                <ProcedureCombobox
+                  procedures={procedures}
+                  value={field.value}
+                  onChange={(v) => {
+                    field.onChange(v);
+                    const proc = v && v !== PROCEDURE_OTHER ? getProcedureById(v) : null;
+                    if (proc?.doctorIds?.length && form.getValues("doctorId") && !proc.doctorIds.includes(form.getValues("doctorId"))) {
+                      form.setValue("doctorId", proc.doctorIds[0]);
+                    }
+                  }}
+                  searchPlaceholder={labels.procedureSearchPlaceholder}
+                  selectPlaceholder={labels.procedureSelectPlaceholder}
+                />
+              </FormControl>
             </FormItem>
           )}
         />
@@ -241,27 +224,23 @@ export function AppointmentForm({
           name="doctorId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Doctor</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-                disabled={doctorsForProcedure.length === 0}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={selectedProcedure?.doctorIds?.length ? "Doctores asignados al procedimiento" : "Seleccione doctor"} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {doctorsForProcedure.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name} · {d.specialty}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormLabel>{labels.doctorLabel}</FormLabel>
+              <FormControl>
+                <DoctorCombobox
+                  doctors={doctorsForProcedure}
+                  value={field.value}
+                  onChange={field.onChange}
+                  searchPlaceholder={labels.doctorSearchPlaceholder}
+                  selectPlaceholder={
+                    selectedProcedure?.doctorIds?.length
+                      ? labels.doctorSelectPlaceholderAssigned
+                      : labels.doctorSelectPlaceholder
+                  }
+                  disabled={doctorsForProcedure.length === 0}
+                />
+              </FormControl>
               {selectedProcedure?.doctorIds?.length && (
-                <p className="text-xs text-muted-foreground">Solo doctores asignados a este procedimiento</p>
+                <p className="text-xs text-muted-foreground">{labels.doctorHintAssigned}</p>
               )}
             </FormItem>
           )}

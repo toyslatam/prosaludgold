@@ -350,16 +350,17 @@ export function LocationManagerModal({
           <div className="px-6 pb-2 text-sm text-muted-foreground">
             Listado ({filtered.length})
           </div>
-          <ScrollArea className="flex-1 min-h-0 px-6" style={{ height: "min(400px, 35vh)" }}>
-            <div className="pb-4 pr-2">
-              {filtered.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground text-sm">
-                  No hay ubicaciones que coincidan.
-                </p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
+          <div className="px-6 flex-1 min-h-0 overflow-hidden">
+            <ScrollArea className="h-[min(400px,42vh)] max-h-[420px] w-full">
+              <div className="pb-4 pr-2">
+                {filtered.length === 0 ? (
+                  <p className="py-8 text-center text-muted-foreground text-sm">
+                    No hay ubicaciones que coincidan.
+                  </p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-background border-b">
+                      <tr className="text-left text-muted-foreground">
                       <th className="py-2 font-medium">Nombre</th>
                       <th className="py-2 font-medium">Tipo</th>
                       <th className="py-2 font-medium">Sede</th>
@@ -496,6 +497,7 @@ export function LocationManagerModal({
               )}
             </div>
           </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
