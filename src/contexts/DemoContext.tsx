@@ -1,9 +1,11 @@
 /**
- * Contexto del demo por vertical. Proporciona basePath para que todos los links/navigate usen /demo/:vertical.
+ * Contexto del demo por vertical. Soporta modo multi-vertical cuando el admin
+ * tiene más de un módulo habilitado en su clinic_config.
  */
 import { createContext, useContext, useMemo } from "react";
 import { useParams, Navigate } from "react-router-dom";
-import { getDemoConfig, isValidVertical } from "@/config/demos";
+import { getDemoConfig, isValidVertical, buildMultiConfig } from "@/config/demos";
+import type { VerticalConfig } from "@/config/demos";
 
 type DemoContextValue = {
   vertical: string;
@@ -13,12 +15,18 @@ type DemoContextValue = {
 
 const DemoContext = createContext<DemoContextValue | null>(null);
 
-export function DemoProvider({ children }: { children: React.ReactNode }) {
+interface DemoProviderProps {
+  children: React.ReactNode;
+  /** Módulos habilitados provenientes de AppConfigContext */
+  enabledModules?: string[];
+}
+
+export function DemoProvider({ children, enabledModules }: DemoProviderProps) {
   const { vertical: param } = useParams<{ vertical: string }>();
   if (param && !isValidVertical(param)) {
-    return <Navigate to="/demo/dental" replace />;
+    return <Navigate to="/demo/multi" replace />;
   }
-  const vertical = param && isValidVertical(param) ? param : "dental";
+  const vertical = param && isValidVertical(param) ? param : "multi";
   const basePath = `/demo/${vertical}`;
   const value = useMemo(
     () => ({
@@ -35,15 +43,18 @@ export function useDemo() {
   const ctx = useContext(DemoContext);
   if (!ctx) {
     return {
-      vertical: "dental",
-      basePath: "/demo/dental",
-      isDental: true,
+      vertical: "multi",
+      basePath: "/demo/multi",
+      isDental: false,
     };
   }
   return ctx;
 }
 
-export function useDemoConfig() {
+export function useDemoConfig(enabledModules?: string[]): VerticalConfig {
   const { vertical } = useDemo();
-  return getDemoConfig(vertical);
+  if (vertical === "multi" && enabledModules?.length) {
+    return buildMultiConfig(enabledModules);
+  }
+  return getDemoConfig(vertical, enabledModules);
 }

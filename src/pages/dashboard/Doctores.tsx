@@ -1,295 +1,214 @@
-"use client";
-
-import { useState, useMemo } from "react";
-import { useDemo } from "@/contexts/DemoContext";
-import type { VerticalKey } from "@/config/demos";
-import { getProfessionalsConfig } from "@/config/professionals";
-import { getProfessionals, updateProfessional } from "@/lib/professionals/repository";
-import { getSpecialties } from "@/lib/professionals/specialties";
-import { getSites, getSiteById } from "@/lib/agenda/sites";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useDoctors, useInsertDoctor, useUpdateDoctor } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { SpecialtyManagerModal } from "@/components/professionals/SpecialtyManagerModal";
-import { ProfessionalFormModal } from "@/components/professionals/ProfessionalFormModal";
-import { Pencil, Archive, ArchiveRestore, Stethoscope } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Stethoscope, Plus, Pencil, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
+import { useDemo } from "@/contexts/DemoContext";
+
+type DoctorForm = {
+  name: string;
+  specialty: string;
+  branch: string;
+  available: boolean;
+};
+
+const EMPTY_FORM: DoctorForm = { name: "", specialty: "", branch: "", available: true };
 
 const Doctores = () => {
   const { vertical } = useDemo();
-  const v = vertical as VerticalKey;
-  const config = getProfessionalsConfig(v);
+  const [search, setSearch] = useState("");
+  const [filterAvailable, setFilterAvailable] = useState<"all" | "active" | "inactive">("all");
+  const [openNew, setOpenNew] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<DoctorForm>(EMPTY_FORM);
 
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [showSpecialtiesModal, setShowSpecialtiesModal] = useState(false);
-  const [editingProfessional, setEditingProfessional] = useState<{ id: string } | null>(null);
-  const [searchName, setSearchName] = useState("");
-  const [filterSiteId, setFilterSiteId] = useState<string>("all");
-  const [filterSpecialtyId, setFilterSpecialtyId] = useState<string>("all");
-  const [filterActive, setFilterActive] = useState<string>("active");
+  const { data: doctors = [], isLoading } = useDoctors();
+  const insert = useInsertDoctor();
+  const update = useUpdateDoctor();
 
-  const [listKey, setListKey] = useState(0);
-  const refreshList = () => {
-    setEditingProfessional(null);
-    setShowNewModal(false);
-    setListKey((k) => k + 1);
+  const professionalLabel = vertical === "spa" ? "Terapeuta" : vertical === "medical" ? "Médico" : "Doctor";
+
+  const filtered = doctors.filter((d) => {
+    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
+      d.specialty.toLowerCase().includes(search.toLowerCase());
+    const matchAvail =
+      filterAvailable === "all" ? true :
+      filterAvailable === "active" ? d.available :
+      !d.available;
+    return matchSearch && matchAvail;
+  });
+
+  const openEdit = (id: string) => {
+    const doc = doctors.find((d) => d.id === id);
+    if (!doc) return;
+    setForm({ name: doc.name, specialty: doc.specialty, branch: doc.branch, available: doc.available });
+    setEditingId(id);
   };
 
-  const professionals = useMemo(
-    () => getProfessionals(v, true),
-    [v, listKey]
-  );
-  const specialties = useMemo(
-    () => getSpecialties(v),
-    [v, listKey, showSpecialtiesModal]
-  );
-  const sites = useMemo(() => getSites(), []);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.specialty.trim()) return;
 
-  const filtered = useMemo(() => {
-    let list = [...professionals];
-    if (searchName.trim()) {
-      const q = searchName.trim().toLowerCase();
-      list = list.filter((p) => p.fullName.toLowerCase().includes(q));
+    if (editingId) {
+      update.mutate(
+        { id: editingId, patch: form },
+        {
+          onSuccess: () => { toast.success(`${professionalLabel} actualizado`); setEditingId(null); setForm(EMPTY_FORM); },
+          onError: (err) => toast.error(err.message),
+        }
+      );
+    } else {
+      insert.mutate(
+        { ...form, branch: form.branch || "Principal" },
+        {
+          onSuccess: () => { toast.success(`${professionalLabel} registrado`); setOpenNew(false); setForm(EMPTY_FORM); },
+          onError: (err) => toast.error(err.message),
+        }
+      );
     }
-    if (filterSiteId !== "all") {
-      list = list.filter((p) => p.siteIds?.includes(filterSiteId));
-    }
-    if (filterSpecialtyId !== "all") {
-      list = list.filter((p) => p.specialtyId === filterSpecialtyId);
-    }
-    if (filterActive === "active") list = list.filter((p) => p.isActive);
-    if (filterActive === "archived") list = list.filter((p) => !p.isActive);
-    return list;
-  }, [professionals, searchName, filterSiteId, filterSpecialtyId, filterActive]);
-
-  const editing = editingProfessional
-    ? professionals.find((p) => p.id === editingProfessional.id) ?? null
-    : null;
-
-  const handleToggleActive = (id: string) => {
-    const p = professionals.find((x) => x.id === id);
-    if (!p) return;
-    updateProfessional(id, { isActive: !p.isActive });
-    refreshList();
   };
 
-  const getSpecialtyName = (specialtyId: string) =>
-    specialties.find((s) => s.id === specialtyId)?.name ?? "—";
-  const getSiteNames = (siteIds: string[]) =>
-    siteIds.map((id) => getSiteById(id)?.name ?? id).join(", ") || "—";
+  const toggleAvailable = (id: string, current: boolean) => {
+    update.mutate(
+      { id, patch: { available: !current } },
+      {
+        onSuccess: () => toast.success(current ? "Marcado como inactivo" : "Marcado como activo"),
+        onError: (err) => toast.error(err.message),
+      }
+    );
+  };
+
+  const isPending = insert.isPending || update.isPending;
 
   return (
-    <div className="space-y-8">
-      {/* Sección A: Profesionales */}
-      <section aria-labelledby="professionals-heading">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h1 id="professionals-heading" className="text-2xl font-bold">
-              {config.sectionTitle}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Gestión de profesionales y especialidades
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setShowNewModal(true)}>
-              {config.newButtonLabel}
-            </Button>
-            <Button variant="secondary" onClick={() => setShowSpecialtiesModal(true)}>
-              {config.specialtiesButtonLabel}
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{professionalLabel}es</h1>
+          <p className="text-muted-foreground text-sm">
+            {isLoading ? "Cargando…" : `${doctors.length} profesionales registrados`}
+          </p>
         </div>
+        <Dialog open={openNew} onOpenChange={setOpenNew}>
+          <DialogTrigger asChild>
+            <Button className="gap-2" onClick={() => setForm(EMPTY_FORM)}>
+              <Plus className="w-4 h-4" /> Nuevo {professionalLabel.toLowerCase()}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Registrar {professionalLabel}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Nombre completo *</Label>
+                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Dr. Juan Pérez" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Especialidad *</Label>
+                <Input value={form.specialty} onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))} placeholder="Odontología General" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sede / Sucursal</Label>
+                <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} placeholder="Principal" />
+              </div>
+              <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Registrar"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-        <div className="space-y-4 mb-6">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[180px] space-y-1.5">
-              <Label htmlFor="search-name" className="sr-only">
-                Buscar por nombre
-              </Label>
-              <Input
-                id="search-name"
-                placeholder="Buscar por nombre…"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-              />
-            </div>
-            <div className="w-[160px] space-y-1.5">
-              <Label htmlFor="filter-site" className="sr-only">
-                Sede
-              </Label>
-              <Select value={filterSiteId} onValueChange={setFilterSiteId}>
-                <SelectTrigger id="filter-site">
-                  <SelectValue placeholder="Sede" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las sedes</SelectItem>
-                  {sites.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-[180px] space-y-1.5">
-              <Label htmlFor="filter-specialty" className="sr-only">
-                Especialidad
-              </Label>
-              <Select value={filterSpecialtyId} onValueChange={setFilterSpecialtyId}>
-                <SelectTrigger id="filter-specialty">
-                  <SelectValue placeholder="Especialidad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {specialties.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-[140px] space-y-1.5">
-              <Label htmlFor="filter-active" className="sr-only">
-                Estado
-              </Label>
-              <Select value={filterActive} onValueChange={setFilterActive}>
-                <SelectTrigger id="filter-active">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Activos</SelectItem>
-                  <SelectItem value="archived">Archivados</SelectItem>
-                  <SelectItem value="all">Todos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nombre o especialidad…" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <Select value={filterAvailable} onValueChange={(v) => setFilterAvailable(v as typeof filterAvailable)}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Activos</SelectItem>
+            <SelectItem value="inactive">Inactivos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
+      {/* List */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /> Cargando {professionalLabel.toLowerCase()}es…
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-center text-muted-foreground py-10">
+          {search ? "No se encontraron resultados." : `Aún no hay ${professionalLabel.toLowerCase()}es registrados.`}
+        </p>
+      ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-card rounded-xl p-5 border border-border shadow-card flex flex-col"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Stethoscope className="h-5 w-5 text-primary" />
+            <div key={doc.id} className="bg-card rounded-xl border border-border shadow-card p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Stethoscope className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm leading-tight">{doc.name}</h3>
+                    <p className="text-xs text-muted-foreground">{doc.specialty}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-sm truncate">{doc.fullName}</h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {getSpecialtyName(doc.specialtyId)}
-                  </p>
-                </div>
+                <Badge variant={doc.available ? "default" : "secondary"} className="text-xs shrink-0">
+                  {doc.available ? "Activo" : "Inactivo"}
+                </Badge>
               </div>
-              <div className="text-xs text-muted-foreground mb-2">
-                {getSiteNames(doc.siteIds ?? [])}
-              </div>
-              <div className="flex items-center justify-between mt-auto flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant={doc.isAvailable ? "default" : "secondary"} className="text-xs">
-                    {doc.isAvailable ? config.availableLabel : config.unavailableLabel}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {config.commissionLabel}:{" "}
-                    {doc.commissionDefault.type === "PERCENT"
-                      ? `${doc.commissionDefault.value}%`
-                      : `$${doc.commissionDefault.value}`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => setEditingProfessional({ id: doc.id })}
-                    aria-label="Editar"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                    onClick={() => handleToggleActive(doc.id)}
-                    aria-label={doc.isActive ? "Archivar" : "Activar"}
-                  >
-                    {doc.isActive ? (
-                      <Archive className="h-4 w-4" />
-                    ) : (
-                      <ArchiveRestore className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+              <p className="text-xs text-muted-foreground">Sede: {doc.branch}</p>
+              <div className="flex gap-2 mt-auto">
+                <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(doc.id)}>
+                  <Pencil className="w-3 h-3" /> Editar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => toggleAvailable(doc.id, doc.available)}
+                >
+                  {doc.available ? "Desactivar" : "Activar"}
+                </Button>
               </div>
             </div>
           ))}
         </div>
-        {filtered.length === 0 && (
-          <p className="text-center text-muted-foreground py-8 text-sm">
-            No hay profesionales que coincidan con los filtros.
-          </p>
-        )}
-      </section>
+      )}
 
-      {/* Sección B: Roles y usuarios */}
-      <section aria-labelledby="roles-heading" className="border-t pt-8">
-        <h2 id="roles-heading" className="font-semibold mb-1">
-          Roles y usuarios
-        </h2>
-        <p className="text-muted-foreground text-sm mb-4">
-          Gestión de accesos y permisos
-        </p>
-        <div className="bg-card rounded-xl border border-border shadow-card p-5">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {["Administrador", "Recepción", "Doctor", "Caja", "Inventario"].map((role) => (
-              <div key={role} className="p-3 border border-border rounded-lg text-center">
-                <p className="font-medium text-sm">{role}</p>
-                <p className="text-xs text-muted-foreground mt-1">Permisos configurables</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <SpecialtyManagerModal
-        open={showSpecialtiesModal}
-        onOpenChange={setShowSpecialtiesModal}
-        vertical={v}
-        onChanged={refreshList}
-      />
-
-      <ProfessionalFormModal
-        open={showNewModal || !!editingProfessional}
-        onOpenChange={(open) => {
-          if (!open) {
-            setShowNewModal(false);
-            setEditingProfessional(null);
-          }
-        }}
-        vertical={v}
-        professional={editing}
-        specialties={specialties}
-        sites={sites}
-        onSave={refreshList}
-        onOpenSpecialties={() => {
-          setShowNewModal(false);
-          setEditingProfessional(null);
-          setShowSpecialtiesModal(true);
-        }}
-      />
+      {/* Edit dialog */}
+      <Dialog open={!!editingId} onOpenChange={(o) => { if (!o) { setEditingId(null); setForm(EMPTY_FORM); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar {professionalLabel}</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nombre completo *</Label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Especialidad *</Label>
+              <Input value={form.specialty} onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sede / Sucursal</Label>
+              <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} />
+            </div>
+            <Button type="submit" className="w-full" disabled={isPending}>
+              {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Guardar cambios"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

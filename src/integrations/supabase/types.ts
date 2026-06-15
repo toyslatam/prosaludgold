@@ -113,6 +113,75 @@ export type Database = {
           },
         ]
       }
+      clinic_config: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          user_id: string | null
+          name: string
+          ruc: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          website: string | null
+          country: string
+          currency: string
+          timezone: string
+          language: string
+          modules_enabled: string[]
+          notify_whatsapp: boolean
+          notify_email: boolean
+          notify_inventory_alert: boolean
+          notify_payment: boolean
+          onboarding_complete: boolean
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          user_id?: string | null
+          name?: string
+          ruc?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          website?: string | null
+          country?: string
+          currency?: string
+          timezone?: string
+          language?: string
+          modules_enabled?: string[]
+          notify_whatsapp?: boolean
+          notify_email?: boolean
+          notify_inventory_alert?: boolean
+          notify_payment?: boolean
+          onboarding_complete?: boolean
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          user_id?: string | null
+          name?: string
+          ruc?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          website?: string | null
+          country?: string
+          currency?: string
+          timezone?: string
+          language?: string
+          modules_enabled?: string[]
+          notify_whatsapp?: boolean
+          notify_email?: boolean
+          notify_inventory_alert?: boolean
+          notify_payment?: boolean
+          onboarding_complete?: boolean
+        }
+        Relationships: []
+      }
       doctors: {
         Row: {
           available: boolean
@@ -315,6 +384,56 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sedes: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string
+          clinic_config_id: string | null
+          name: string
+          address: string | null
+          phone: string | null
+          email: string | null
+          active: boolean
+          modules_enabled: string[]
+          schedule: Json
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          clinic_config_id?: string | null
+          name: string
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          active?: boolean
+          modules_enabled?: string[]
+          schedule?: Json
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          updated_at?: string
+          clinic_config_id?: string | null
+          name?: string
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          active?: boolean
+          modules_enabled?: string[]
+          schedule?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sedes_clinic_config_id_fkey"
+            columns: ["clinic_config_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_config"
             referencedColumns: ["id"]
           },
         ]

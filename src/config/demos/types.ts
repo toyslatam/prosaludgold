@@ -3,7 +3,7 @@
  * Escalable: agregar nueva industria = nuevo config + key en VerticalKey.
  */
 
-export type VerticalKey = "dental" | "medical" | "spa";
+export type VerticalKey = "dental" | "medical" | "spa" | "multi";
 
 export interface HeroConfig {
   badge: string;

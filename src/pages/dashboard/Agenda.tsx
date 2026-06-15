@@ -4,18 +4,16 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
-  getAppointmentsWithDetails,
-  getAppointmentsRaw,
-  getDoctors,
-  getChairs,
-  getPatients,
-  createAppointment,
-  updateAppointment,
-} from "@/lib/agenda/repository";
+  useAppointments,
+  useInsertAppointment,
+  useUpdateAppointment,
+  useDoctors,
+  usePatients,
+} from "@/hooks/useSupabase";
+import { getChairs } from "@/lib/agenda/repository";
 import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
 import { filterAppointmentsByDate, applyAgendaFilters } from "@/lib/agenda/filterAppointments";
 import { AgendaToolbar } from "@/components/agenda/AgendaToolbar";
-import { AgendaViewSwitcher } from "@/components/agenda/AgendaViewSwitcher";
 import { FiltersPanel, getDefaultAgendaFilters, type AgendaFiltersState } from "@/components/agenda/FiltersPanel";
 import { AppointmentDrawer } from "@/components/agenda/AppointmentDrawer";
 import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
@@ -52,9 +50,23 @@ export default function Agenda() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [newSlotDefault, setNewSlotDefault] = useState<{ date: string; time: string } | null>(null);
   const [defaultPatientId, setDefaultPatientId] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [locationManagerOpen, setLocationManagerOpen] = useState(false);
+  const [chairsKey, setChairsKey] = useState(0);
   const notifications = useAgendaNotifications();
+
+  // ── Supabase data ──────────────────────────────────────────
+  const { data: allAppointments = [] } = useAppointments();
+  const { data: doctors = [] } = useDoctors();
+  const { data: patients = [] } = usePatients();
+  const insertApt = useInsertAppointment();
+  const updateApt = useUpdateAppointment();
+
+  // ── Local location/chair data (not in Supabase) ───────────
+  const chairs = useMemo(() => getChairs(), [chairsKey]);
+  const locationsForForm = useMemo(
+    () => getLocationsWithSiteNames({ includeInactive: false }),
+    [chairsKey],
+  );
 
   useEffect(() => {
     const patientId = searchParams.get("patientId");
@@ -65,19 +77,7 @@ export default function Agenda() {
     }
   }, [searchParams]);
 
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  const doctors = useMemo(() => getDoctors(), [refreshKey]);
-  const chairs = useMemo(() => getChairs(), [refreshKey]);
-  const locationsForForm = useMemo(
-    () => getLocationsWithSiteNames({ includeInactive: false }),
-    [refreshKey],
-  );
-  const patients = useMemo(() => getPatients(), [refreshKey]);
-  const allAppointments = useMemo(() => getAppointmentsWithDetails(), [refreshKey]);
-  const appointmentCountByLocationId = useCallback((locationId: string) => {
-    return getAppointmentsRaw().filter((a) => a.chairId === locationId).length;
-  }, []);
+  const refreshChairs = useCallback(() => setChairsKey((k) => k + 1), []);
 
   const filteredByDate = useMemo(
     () => filterAppointmentsByDate(allAppointments, selectedDate, viewMode),
@@ -97,94 +97,93 @@ export default function Agenda() {
     return map;
   }, [allAppointments, selectedDateStr]);
 
+  // Appointments per location (chairId not stored in Supabase, return 0)
+  const appointmentCountByLocationId = useCallback((_locationId: string) => 0, []);
+
   const handleSave = useCallback(
-    (values: AppointmentFormValues, patient: { id: string }) => {
+    (values: AppointmentFormValues, patient: { id: string; name?: string }) => {
+      const patientName = patient.name ?? "";
       const doctor = doctors.find((d) => d.id === values.doctorId);
-      const payload = {
-        patientId: values.patientId,
-        doctorId: values.doctorId,
+      const base = {
+        patient_id: values.patientId,
+        doctor_id: values.doctorId,
         date: values.date,
         time: values.time,
         duration: values.duration,
-        status: values.status,
+        status: values.status as "pendiente" | "confirmada" | "en_sala" | "atendida" | "no_asistio",
         branch: doctor?.branch ?? "Sede Central",
-        reason: values.reason,
-        procedureId: values.procedureId === "__other__" ? null : values.procedureId,
-        chairId: values.chairId || null,
-        situation: values.situation ?? null,
-        confirmations: {
-          whatsapp: values.confirmWhatsapp,
-          email: values.confirmEmail,
-          phone: values.confirmPhone,
-          auto_whatsapp: values.autoWhatsapp,
-          agenda_online: false,
-        },
-        notes: values.notes || null,
+        reason: values.reason || null,
       };
 
       if (selectedAppointment) {
-        updateAppointment(selectedAppointment.id, payload);
-        toast.success("Cita actualizada");
-        notifications.add({ type: "cita_reprogramada", title: "Cita actualizada", body: `${patient.name} · ${values.date} ${values.time}` });
+        updateApt.mutate(
+          { id: selectedAppointment.id, patch: base },
+          {
+            onSuccess: () => {
+              toast.success("Cita actualizada");
+              notifications.add({ type: "cita_reprogramada", title: "Cita actualizada", body: `${patientName} · ${values.date} ${values.time}` });
+              setDrawerOpen(false);
+              setSelectedAppointment(null);
+              setNewSlotDefault(null);
+              setDefaultPatientId(null);
+            },
+            onError: (err) => toast.error(err.message),
+          }
+        );
       } else {
-        createAppointment(payload);
-        toast.success("Cita creada");
-        notifications.add({ type: "cita_creada", title: "Cita creada", body: `${patient.name} · ${values.date} ${values.time}` });
+        insertApt.mutate(
+          base,
+          {
+            onSuccess: () => {
+              toast.success("Cita creada");
+              notifications.add({ type: "cita_creada", title: "Cita creada", body: `${patientName} · ${values.date} ${values.time}` });
+              setDrawerOpen(false);
+              setSelectedAppointment(null);
+              setNewSlotDefault(null);
+              setDefaultPatientId(null);
+            },
+            onError: (err) => toast.error(err.message),
+          }
+        );
       }
-      refresh();
-      setDrawerOpen(false);
-      setSelectedAppointment(null);
-      setNewSlotDefault(null);
-      setDefaultPatientId(null);
     },
-    [doctors, selectedAppointment, refresh, notifications.add],
+    [doctors, selectedAppointment, insertApt, updateApt, notifications.add],
   );
 
-  const handleAnular = useCallback(
-    (id: string) => {
-      updateAppointment(id, { status: "anulada" });
-      toast.success("Cita anulada");
-      notifications.add({ type: "cita_reprogramada", title: "Cita anulada", body: "Se anuló la cita seleccionada." });
-      refresh();
-      setDrawerOpen(false);
-      setSelectedAppointment(null);
+  const handleStatusUpdate = useCallback(
+    (id: string, status: "anulada" | "no_asistio" | "atendida", msg: string) => {
+      updateApt.mutate(
+        { id, patch: { status: status as "pendiente" | "confirmada" | "en_sala" | "atendida" | "no_asistio" } },
+        {
+          onSuccess: () => {
+            toast.success(msg);
+            setDrawerOpen(false);
+            setSelectedAppointment(null);
+          },
+          onError: (err) => toast.error(err.message),
+        }
+      );
     },
-    [refresh, notifications.add],
+    [updateApt],
   );
 
-  const handleNoAsiste = useCallback(
-    (id: string) => {
-      updateAppointment(id, { status: "no_asistio" });
-      toast.success("Marcada como no asistió");
-      refresh();
-      setDrawerOpen(false);
-      setSelectedAppointment(null);
-    },
-    [refresh],
-  );
+  const handleAnular   = useCallback((id: string) => {
+    notifications.add({ type: "cita_reprogramada", title: "Cita anulada", body: "Se anuló la cita seleccionada." });
+    handleStatusUpdate(id, "anulada", "Cita anulada");
+  }, [handleStatusUpdate, notifications.add]);
 
-  const handleAtendida = useCallback(
-    (id: string) => {
-      updateAppointment(id, { status: "atendida" });
-      toast.success("Marcada como atendida");
-      refresh();
-      setDrawerOpen(false);
-      setSelectedAppointment(null);
-    },
-    [refresh],
-  );
+  const handleNoAsiste = useCallback((id: string) => handleStatusUpdate(id, "no_asistio", "Marcada como no asistió"), [handleStatusUpdate]);
+  const handleAtendida = useCallback((id: string) => handleStatusUpdate(id, "atendida",   "Marcada como atendida"),   [handleStatusUpdate]);
 
   const handleEnviarConfirmacion = useCallback(
     (_id: string) => {
       toast.success("Confirmación enviada (simulado)");
-      notifications.add({ type: "confirmacion_enviada", title: "Confirmación enviada", body: "Recordatorio enviado al paciente (simulado)." });
+      notifications.add({ type: "confirmacion_enviada", title: "Confirmación enviada", body: "Recordatorio enviado al paciente." });
     },
     [notifications.add],
   );
 
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+  const handlePrint = useCallback(() => window.print(), []);
 
   const openNewAppointment = useCallback((date?: string, time?: string) => {
     setSelectedAppointment(null);
@@ -223,7 +222,8 @@ export default function Agenda() {
             onClearAll={notifications.clearAll}
           />
         </div>
-        <FiltersPanel filters={filters} onFiltersChange={setFilters} doctors={doctors} chairs={chairs} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        <FiltersPanel filters={filters} onFiltersChange={setFilters} doctors={doctors as any} chairs={chairs} />
       </div>
 
       {viewMode === "daily_grid" && (
@@ -241,7 +241,7 @@ export default function Agenda() {
 
       {viewMode === "weekly_grid" && (
         <div className="bg-card rounded-xl border border-border shadow-card p-4 text-muted-foreground">
-          Vista semanal (próximamente con calendario completo). Citas del período: {filtered.length}.
+          Vista semanal (próximamente). Citas del período: {filtered.length}.
         </div>
       )}
 
@@ -258,9 +258,11 @@ export default function Agenda() {
           if (!open) setDefaultPatientId(null);
         }}
         appointment={selectedAppointment}
-        doctors={doctors}
+        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+        doctors={doctors as any}
         locations={locationsForForm}
-        patients={patients}
+        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+        patients={patients as any}
         defaultDate={newSlotDefault?.date}
         defaultTime={newSlotDefault?.time}
         defaultPatientId={defaultPatientId ?? undefined}
@@ -281,10 +283,10 @@ export default function Agenda() {
         open={locationManagerOpen}
         onOpenChange={(open) => {
           setLocationManagerOpen(open);
-          if (!open) refresh();
+          if (!open) refreshChairs();
         }}
         locations={locationsForForm}
-        onLocationsChange={refresh}
+        onLocationsChange={refreshChairs}
         appointmentCountByLocationId={appointmentCountByLocationId}
       />
     </div>

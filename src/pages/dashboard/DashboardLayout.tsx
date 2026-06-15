@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -21,7 +21,10 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useDemo, useDemoConfig } from "@/contexts/DemoContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { PATH_KEY_TO_PATH } from "@/config/demos/navSpec";
+import { supabase } from "@/integrations/supabase/client";
+import ProSaludLogo from "@/components/ProSaludLogo";
 
 const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   inicio: LayoutDashboard,
@@ -43,31 +46,47 @@ const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string 
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const { basePath } = useDemo();
-  const config = useDemoConfig();
+  const { enabledModules } = useAppConfig();
+  const config = useDemoConfig(enabledModules);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? "");
+    });
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
+  const userInitials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "AD";
+
   const sidebarItems = config.navItems.map((item) => {
     const pathSegment = PATH_KEY_TO_PATH[item.pathKey] ?? item.pathKey;
     const path = pathSegment ? `${basePath}/${pathSegment}` : basePath;
     const Icon = PATH_KEY_TO_ICON[item.pathKey];
-    return {
-      label: item.label,
-      path,
-      icon: Icon ?? LayoutDashboard,
-    };
+    return { label: item.label, path, icon: Icon ?? LayoutDashboard };
   });
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-foreground/30 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-foreground/30 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground flex flex-col transition-transform lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logoprosaludgold.ico" alt="ProSalud Gold" className="w-8 h-8 rounded-lg object-contain" />
+            <ProSaludLogo size={32} />
             <span className="font-bold text-sm text-sidebar-foreground">ProSalud Gold</span>
           </Link>
           <button className="lg:hidden text-sidebar-foreground" onClick={() => setSidebarOpen(false)}>
@@ -97,10 +116,13 @@ const DashboardLayout = () => {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
-          <Link to="/" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
+          >
             <LogOut className="w-4 h-4" />
-            Volver al sitio
-          </Link>
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 
@@ -113,9 +135,9 @@ const DashboardLayout = () => {
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary">AD</span>
+              <span className="text-xs font-semibold text-primary">{userInitials}</span>
             </div>
-            <span className="text-sm font-medium hidden sm:block">Admin Demo</span>
+            <span className="text-sm font-medium hidden sm:block max-w-[180px] truncate">{userEmail}</span>
           </div>
         </header>
 
