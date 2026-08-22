@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Check, Circle } from "lucide-react";
@@ -41,11 +41,21 @@ export function ConsentimientosList({ patientId }: ConsentimientosListProps) {
   const [signedByName, setSignedByName] = useState("");
   const [signedCheck, setSignedCheck] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [list, setList] = useState<Consentimiento[]>([]);
 
-  const list = useMemo(
-    () => getConsentimientosByPatient(patientId),
-    [patientId, refresh]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    getConsentimientosByPatient(patientId)
+      .then((data) => {
+        if (!cancelled) setList(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los consentimientos.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, refresh]);
 
   const openCreate = () => {
     setTemplateId("");
@@ -53,21 +63,25 @@ export function ConsentimientosList({ patientId }: ConsentimientosListProps) {
     setModalOpen(true);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const plantilla = PLANTILLAS.find((p) => p.id === templateId);
     if (!plantilla) {
       toast.error("Seleccione una plantilla");
       return;
     }
-    addConsentimiento({
-      patientId,
-      type: plantilla.label,
-      date,
-      signed: false,
-    });
-    setRefresh((r) => r + 1);
-    setModalOpen(false);
-    toast.success("Consentimiento creado");
+    try {
+      await addConsentimiento({
+        patientId,
+        type: plantilla.label,
+        date,
+        signed: false,
+      });
+      setRefresh((r) => r + 1);
+      setModalOpen(false);
+      toast.success("Consentimiento creado");
+    } catch {
+      toast.error("No se pudo crear el consentimiento.");
+    }
   };
 
   const openSign = (c: Consentimiento) => {
@@ -77,7 +91,7 @@ export function ConsentimientosList({ patientId }: ConsentimientosListProps) {
     setSignModalOpen(true);
   };
 
-  const handleSign = () => {
+  const handleSign = async () => {
     if (!signingId || !signedByName.trim()) {
       toast.error("Indique el nombre del paciente/firmante");
       return;
@@ -86,11 +100,15 @@ export function ConsentimientosList({ patientId }: ConsentimientosListProps) {
       toast.error("Debe confirmar que el paciente firmó");
       return;
     }
-    setConsentimientoSigned(signingId, signedByName.trim());
-    setRefresh((r) => r + 1);
-    setSignModalOpen(false);
-    setSigningId(null);
-    toast.success("Consentimiento firmado");
+    try {
+      await setConsentimientoSigned(signingId, signedByName.trim());
+      setRefresh((r) => r + 1);
+      setSignModalOpen(false);
+      setSigningId(null);
+      toast.success("Consentimiento firmado");
+    } catch {
+      toast.error("No se pudo registrar la firma.");
+    }
   };
 
   return (

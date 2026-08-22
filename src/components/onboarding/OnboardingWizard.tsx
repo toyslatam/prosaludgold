@@ -20,7 +20,7 @@ function ProgressItem({
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   value: string | undefined;
 }) {
@@ -50,7 +50,7 @@ function ProgressItem({
 
 export function OnboardingWizard() {
   const { completeOnboarding } = useAppConfig();
-  const { messages, collectedData, isLoading, isDone, sendMessage } = useOnboardingAgent();
+  const { messages, collectedData, isLoading, isDone, isSimulated, sendMessage } = useOnboardingAgent();
   const [saving, setSaving] = useState(false);
 
   const handleComplete = async () => {
@@ -116,13 +116,15 @@ export function OnboardingWizard() {
               </p>
             </div>
             <div className="ml-auto flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-              <span className="text-xs text-teal-400">En línea</span>
+              <div className={`w-2 h-2 rounded-full ${isSimulated ? "bg-amber-400" : "bg-teal-400 animate-pulse"}`} />
+              <span className={`text-xs ${isSimulated ? "text-amber-400" : "text-teal-400"}`}>
+                {isSimulated ? "Modo sin conexión" : "En línea"}
+              </span>
             </div>
           </div>
 
           <div className="flex-1 min-h-0">
-            <OnboardingChat messages={messages} isLoading={isLoading} onSend={sendMessage} />
+            <OnboardingChat messages={messages} isLoading={isLoading} isSimulated={isSimulated} onSend={sendMessage} />
           </div>
         </div>
 

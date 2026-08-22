@@ -29,7 +29,7 @@ function getGenderLabel(gender?: string): string {
   return gender;
 }
 
-export function generateClinicalHistoryPdf(patient: Patient): void {
+export async function generateClinicalHistoryPdf(patient: Patient): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = MARGIN;
 
@@ -126,7 +126,7 @@ export function generateClinicalHistoryPdf(patient: Patient): void {
   doc.setFont("helvetica", "bold");
   doc.text("Evoluciones clínicas (últimas 10)", MARGIN, y);
   pushNewLine();
-  const evoluciones = getEvolucionesByPatient(patient.id).slice(0, 10);
+  const evoluciones = (await getEvolucionesByPatient(patient.id)).slice(0, 10);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(FONT_SIZE_SMALL);
   if (evoluciones.length === 0) {
@@ -143,7 +143,7 @@ export function generateClinicalHistoryPdf(patient: Patient): void {
   doc.setFont("helvetica", "bold");
   doc.text("Odontograma", MARGIN, y);
   pushNewLine();
-  const chartPermanent = getChartFromRecords(patient.id, true);
+  const chartPermanent = await getChartFromRecords(patient.id, true);
   const hasAny = Object.values(chartPermanent.teeth).some((t) => t.conditions.length > 0);
   if (!hasAny) {
     text("No disponible.");
@@ -180,7 +180,7 @@ export function generateClinicalHistoryPdf(patient: Patient): void {
   doc.setFont("helvetica", "bold");
   doc.text("Consentimientos", MARGIN, y);
   pushNewLine();
-  const cons = getConsentimientosByPatient(patient.id);
+  const cons = await getConsentimientosByPatient(patient.id);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(FONT_SIZE_SMALL);
   if (cons.length === 0) {
@@ -204,7 +204,5 @@ function formatEventLine(e: ClinicalEvent): string {
       return `${e.date} ${e.time} · ${e.doctorName} · ${e.prestacion}`;
     case "presupuesto_creado":
       return `${e.date} ${e.time} · Presupuesto · ${e.label ?? "—"}`;
-    default:
-      return `${e.date} ${e.time}`;
   }
 }

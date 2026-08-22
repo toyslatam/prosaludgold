@@ -1,4 +1,7 @@
-/** Consentimientos informados por paciente (dental). */
+/** Consentimientos informados por paciente (dental). Persistidos en Supabase (tabla `consentimientos`). */
+
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 export interface Consentimiento {
   id: string;
@@ -11,55 +14,62 @@ export interface Consentimiento {
   createdAt: string;
 }
 
-const STORAGE_KEY = "psg_consentimientos";
-
-function load(): Consentimiento[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Consentimiento[];
-  } catch {
-    return [];
-  }
-}
-
-function save(list: Consentimiento[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
-export function getConsentimientosByPatient(patientId: string): Consentimiento[] {
-  return load()
-    .filter((c) => c.patientId === patientId)
-    .sort((a, b) => b.date.localeCompare(a.date));
-}
-
-export function addConsentimiento(
-  data: Omit<Consentimiento, "id" | "createdAt">
-): Consentimiento {
-  const list = load();
-  const item: Consentimiento = {
-    ...data,
-    id: `cons-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    createdAt: new Date().toISOString(),
+function fromRow(row: Tables<"consentimientos">): Consentimiento {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    type: row.type,
+    date: row.date,
+    signed: row.signed,
+    signedAt: row.signed_at ?? undefined,
+    signedByName: row.signed_by_name ?? undefined,
+    createdAt: row.created_at,
   };
-  list.push(item);
-  save(list);
-  return item;
 }
 
-export function setConsentimientoSigned(
-  id: string,
-  signedByName: string
-): Consentimiento | undefined {
-  const list = load();
-  const idx = list.findIndex((c) => c.id === id);
-  if (idx === -1) return undefined;
-  list[idx] = {
-    ...list[idx],
-    signed: true,
-    signedAt: new Date().toISOString(),
-    signedByName,
-  };
-  save(list);
-  return list[idx];
+export async function getConsentimientosByPatient(patientId: string): Promise<Consentimiento[]> {
+  const { data, error } = await supabase
+    .from("consentimientos")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("date", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(fromRow);
+}
+
+export async function addConsentimiento(data: Omit<Consentimiento, "id" | "createdAt">): Promise<Consentimiento> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error("No autenticado");
+
+  const { data: row, error } = await supabase
+    .from("consentimientos")
+    .insert({
+      user_id: user.id,
+      patient_id: data.patientId,
+      type: data.type,
+      date: data.date,
+      signed: data.signed,
+      signed_at: data.signedAt ?? null,
+      signed_by_name: data.signedByName ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return fromRow(row);
+}
+
+export async function setConsentimientoSigned(id: string, signedByName: string): Promise<Consentimiento | undefined> {
+  const { data: row, error } = await supabase
+    .from("consentimientos")
+    .update({
+      signed: true,
+      signed_at: new Date().toISOString(),
+      signed_by_name: signedByName,
+    })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return row ? fromRow(row) : undefined;
 }

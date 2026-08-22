@@ -1,4 +1,7 @@
-/** Planes de tratamiento (estilo Dentalink) */
+/** Planes de tratamiento (estilo Dentalink). Persistidos en Supabase (tabla `treatment_plans`). */
+
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 export type PlanFinancialStatus = "diagnostico" | "en_curso" | "finalizado";
 
@@ -38,151 +41,76 @@ export interface TreatmentPlan {
   createdAt: string;
 }
 
-const STORAGE_KEY = "psg_treatment_plans";
-
-function loadPlans(): TreatmentPlan[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as TreatmentPlan[];
-  } catch {
-    return [];
-  }
+function fromRow(row: Tables<"treatment_plans">): TreatmentPlan {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    number: row.number,
+    name: row.name,
+    professionalId: row.professional_id,
+    professionalName: row.professional_name,
+    specialty: row.specialty ?? undefined,
+    collaborators: row.collaborators ?? [],
+    branch: row.branch ?? undefined,
+    convenio: row.convenio ?? undefined,
+    totalBudget: Number(row.total_budget),
+    discountPercent: Number(row.discount_percent),
+    realizado: Number(row.realizado),
+    paid: Number(row.paid),
+    status: row.status as PlanFinancialStatus,
+    lastAppointmentDate: row.last_appointment_date ?? undefined,
+    lastAppointmentTime: row.last_appointment_time ?? undefined,
+    prestaciones: (row.prestaciones as unknown as Prestacion[]) ?? [],
+    createdAt: row.created_at,
+  };
 }
 
-function savePlans(plans: TreatmentPlan[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
+export async function getPlansByPatient(patientId: string): Promise<TreatmentPlan[]> {
+  const { data, error } = await supabase
+    .from("treatment_plans")
+    .select("*")
+    .eq("patient_id", patientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(fromRow);
 }
 
-function getSeedPlans(): TreatmentPlan[] {
-  return [
-    {
-      id: "plan-p1-1",
-      patientId: "p1",
-      number: "9781",
-      name: "Nuevo plan de tratamiento",
-      professionalId: "d1",
-      professionalName: "Dra. María González",
-      specialty: "Ortodoncia",
-      collaborators: [],
-      branch: "Sede Central",
-      convenio: "Convenio oro",
-      totalBudget: 3500,
-      discountPercent: 0,
-      realizado: 2100,
-      paid: 2100,
-      status: "en_curso",
-      lastAppointmentDate: "2026-01-28",
-      lastAppointmentTime: "09:00",
-      prestaciones: [
-        { id: "pr-1", name: "Evaluación y plan", discountPercent: 0, price: 150, paid: 150 },
-        { id: "pr-2", name: "Colocación aparatología fija", discountPercent: 0, price: 1800, paid: 1000 },
-        { id: "pr-3", name: "Controles mensuales (12)", discountPercent: 0, price: 1550, paid: 950 },
-      ],
-      createdAt: "2025-06-01T10:00:00.000Z",
-    },
-    {
-      id: "plan-p2-1",
-      patientId: "p2",
-      number: "9782",
-      name: "Tratamiento de conducto #36",
-      professionalId: "d2",
-      professionalName: "Dr. Carlos Mendoza",
-      specialty: "Endodoncia",
-      collaborators: [],
-      branch: "Sede Central",
-      totalBudget: 800,
-      discountPercent: 0,
-      realizado: 350,
-      paid: 350,
-      status: "en_curso",
-      lastAppointmentDate: "2026-02-05",
-      lastAppointmentTime: "09:30",
-      prestaciones: [
-        { id: "pr-4", name: "Endodoncia pieza 36", discountPercent: 0, price: 800, paid: 350 },
-      ],
-      createdAt: "2026-01-20T09:00:00.000Z",
-    },
-    {
-      id: "plan-p4-1",
-      patientId: "p4",
-      number: "9783",
-      name: "Implante dental #14",
-      professionalId: "d4",
-      professionalName: "Dr. Roberto Díaz",
-      specialty: "Implantología",
-      collaborators: [],
-      branch: "Sede Central",
-      totalBudget: 4500,
-      discountPercent: 5,
-      realizado: 2300,
-      paid: 2300,
-      status: "en_curso",
-      lastAppointmentDate: "2026-02-10",
-      lastAppointmentTime: "10:00",
-      prestaciones: [
-        { id: "pr-5", name: "Implante y corona", discountPercent: 5, price: 4500, paid: 2300 },
-      ],
-      createdAt: "2026-01-15T09:00:00.000Z",
-    },
-    {
-      id: "plan-p1-2",
-      patientId: "p1",
-      number: "9770",
-      name: "Limpieza y revisión",
-      professionalId: "d1",
-      professionalName: "Dra. María González",
-      specialty: "Ortodoncia",
-      collaborators: [],
-      branch: "Sede Central",
-      totalBudget: 120,
-      discountPercent: 0,
-      realizado: 120,
-      paid: 120,
-      status: "finalizado",
-      lastAppointmentDate: "2025-05-10",
-      lastAppointmentTime: "11:00",
-      prestaciones: [
-        { id: "pr-6", name: "Limpieza dental", discountPercent: 0, price: 120, paid: 120 },
-      ],
-      createdAt: "2025-05-01T09:00:00.000Z",
-    },
-  ];
+export async function getPlanById(patientId: string, planId: string): Promise<TreatmentPlan | undefined> {
+  const { data, error } = await supabase
+    .from("treatment_plans")
+    .select("*")
+    .eq("patient_id", patientId)
+    .eq("id", planId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? fromRow(data) : undefined;
 }
 
-export function ensureTreatmentPlansSeed(): void {
-  const current = loadPlans();
-  if (current.length > 0) return;
-  savePlans(getSeedPlans());
+export async function getPlansWithBalanceByPatient(patientId: string): Promise<TreatmentPlan[]> {
+  const plans = await getPlansByPatient(patientId);
+  return plans.filter((p) => p.paid < p.totalBudget * (1 - p.discountPercent / 100));
 }
 
-export function getPlansByPatient(patientId: string): TreatmentPlan[] {
-  ensureTreatmentPlansSeed();
-  return loadPlans()
-    .filter((p) => p.patientId === patientId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
+/** Aplica un abono a un plan (actualiza paid); marca "finalizado" si cubre el saldo. */
+export async function applyPaymentToPlan(planId: string, amount: number): Promise<void> {
+  const { data: plan, error: fetchError } = await supabase
+    .from("treatment_plans")
+    .select("*")
+    .eq("id", planId)
+    .single();
+  if (fetchError) throw fetchError;
 
-export function getPlanById(patientId: string, planId: string): TreatmentPlan | undefined {
-  ensureTreatmentPlansSeed();
-  const plan = loadPlans().find((p) => p.id === planId && p.patientId === patientId);
-  return plan;
-}
-
-export function getPlansWithBalanceByPatient(patientId: string): TreatmentPlan[] {
-  return getPlansByPatient(patientId).filter((p) => p.paid < p.totalBudget * (1 - p.discountPercent / 100));
-}
-
-/** Mock: aplica un abono a un plan (actualiza paid) */
-export function applyPaymentToPlan(planId: string, amount: number): void {
-  const plans = loadPlans();
-  const plan = plans.find((p) => p.id === planId);
-  if (!plan) return;
-  const maxPay = plan.totalBudget * (1 - plan.discountPercent / 100) - plan.paid;
+  const totalBudget = Number(plan.total_budget);
+  const discountPercent = Number(plan.discount_percent);
+  const paid = Number(plan.paid);
+  const maxPay = totalBudget * (1 - discountPercent / 100) - paid;
   const toApply = Math.min(amount, Math.max(0, maxPay));
-  plan.paid += toApply;
-  if (plan.paid >= plan.totalBudget * (1 - plan.discountPercent / 100)) {
-    plan.status = "finalizado";
-  }
-  savePlans(plans);
+  const newPaid = paid + toApply;
+  const newStatus = newPaid >= totalBudget * (1 - discountPercent / 100) ? "finalizado" : plan.status;
+
+  const { error: updateError } = await supabase
+    .from("treatment_plans")
+    .update({ paid: newPaid, status: newStatus })
+    .eq("id", planId);
+  if (updateError) throw updateError;
 }

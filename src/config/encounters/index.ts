@@ -32,7 +32,7 @@ const spa: EncounterFormConfig = {
   showCabin: true,
 };
 
-const configs: Record<VerticalKey, EncounterFormConfig> = {
+const configs: Record<Exclude<VerticalKey, "multi">, EncounterFormConfig> = {
   dental,
   medical,
   spa,

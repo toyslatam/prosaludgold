@@ -22,11 +22,12 @@ import {
   addProcedureRecord,
   annulRecord,
   getChartFromRecords,
-  migrateLegacyChartsToRecords,
   SURFACE_LABELS,
   type OdontogramRecord,
   type ConditionKind,
 } from "@/lib/patients/odontogramRecords";
+import type { PatientDentalChart } from "@/lib/patients/dentalChart";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,18 +114,7 @@ export function DentalOdontogram({
   verticalKey,
   className,
 }: DentalOdontogramProps) {
-  if (verticalKey !== "dental") {
-    return null;
-  }
-
   const [permanent, setPermanent] = useState(true);
-  const [migrated, setMigrated] = useState(false);
-  useEffect(() => {
-    if (!migrated) {
-      migrateLegacyChartsToRecords();
-      setMigrated(true);
-    }
-  }, [migrated]);
 
   useEffect(() => {
     try {
@@ -168,14 +158,30 @@ export function DentalOdontogram({
   const lowerLeft = permanent ? PERMANENT_LOWER_LEFT : TEMPORARY_LOWER_LEFT;
   const lowerRight = permanent ? PERMANENT_LOWER_RIGHT : TEMPORARY_LOWER_RIGHT;
 
-  const chart = useMemo(
-    () => getChartFromRecords(patientId, permanent),
-    [patientId, permanent, refresh]
-  );
-  const allRecords = useMemo(
-    () => getAllRecords(patientId, permanent),
-    [patientId, permanent, refresh]
-  );
+  const [chart, setChart] = useState<PatientDentalChart>({
+    patientId,
+    permanent,
+    teeth: {},
+    updatedAt: new Date().toISOString(),
+  });
+  const [allRecords, setAllRecords] = useState<OdontogramRecord[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getChartFromRecords(patientId, permanent), getAllRecords(patientId, permanent)])
+      .then(([nextChart, nextRecords]) => {
+        if (cancelled) return;
+        setChart(nextChart);
+        setAllRecords(nextRecords);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudo cargar el odontograma.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, permanent, refresh]);
+
   const activeRecords = useMemo(
     () => allRecords.filter((r) => !r.annulledAt),
     [allRecords]
@@ -244,12 +250,19 @@ export function DentalOdontogram({
     [toggleTooth]
   );
 
-  const applyCondition = useCallback(() => {
+  const applyCondition = useCallback(async () => {
     if (!selectedCondition || selectedToothIds.size === 0) return;
     const surfaces = Array.from(selectedSurfaces);
-    selectedToothIds.forEach((toothId) => {
-      addRecord(patientId, permanent, toothId, selectedCondition, surfaces);
-    });
+    try {
+      await Promise.all(
+        Array.from(selectedToothIds).map((toothId) =>
+          addRecord(patientId, permanent, toothId, selectedCondition, surfaces)
+        )
+      );
+    } catch {
+      toast.error("No se pudo guardar la condición.");
+      return;
+    }
     setRefresh((r) => r + 1);
     setSelectedToothIds(new Set());
     setSelectedSurfaces(new Set());
@@ -261,46 +274,65 @@ export function DentalOdontogram({
     selectedSurfaces,
   ]);
 
-  const applyProcedure = useCallback(() => {
+  const applyProcedure = useCallback(async () => {
     const name = procedureName.trim() || PROCEDURE_OPTIONS[0]?.name;
     if (!name || selectedToothIds.size === 0) return;
     const surfaces = Array.from(selectedSurfaces);
-    selectedToothIds.forEach((toothId) => {
-      addProcedureRecord(patientId, permanent, toothId, surfaces, {
-        procedureName: name,
-        quantity: procedureQuantity,
-        doctorId: procedureDoctor || undefined,
-        notes: undefined,
-      });
-    });
+    try {
+      await Promise.all(
+        Array.from(selectedToothIds).map((toothId) =>
+          addProcedureRecord(patientId, permanent, toothId, surfaces, {
+            procedureName: name,
+            quantity: procedureQuantity,
+            doctorId: procedureDoctor || undefined,
+            notes: undefined,
+          })
+        )
+      );
+    } catch {
+      toast.error("No se pudo guardar el procedimiento.");
+      return;
+    }
     setRefresh((r) => r + 1);
     setSelectedToothIds(new Set());
     setSelectedSurfaces(new Set());
     setPanelAnchor(null);
   }, [patientId, permanent, procedureName, procedureQuantity, procedureDoctor, selectedToothIds, selectedSurfaces]);
 
-  const applyConditionFromPanel = useCallback(() => {
+  const applyConditionFromPanel = useCallback(async () => {
     if (!conditionForPanel || selectedToothIds.size === 0) return;
     const surfaces = Array.from(selectedSurfaces);
-    selectedToothIds.forEach((toothId) => {
-      addConditionRecord(
-        patientId,
-        permanent,
-        toothId,
-        conditionForPanel,
-        surfaces,
-        conditionKind,
-        conditionNotes || undefined
+    try {
+      await Promise.all(
+        Array.from(selectedToothIds).map((toothId) =>
+          addConditionRecord(
+            patientId,
+            permanent,
+            toothId,
+            conditionForPanel,
+            surfaces,
+            conditionKind,
+            conditionNotes || undefined
+          )
+        )
       );
-    });
+    } catch {
+      toast.error("No se pudo guardar la condición.");
+      return;
+    }
     setRefresh((r) => r + 1);
     setSelectedToothIds(new Set());
     setSelectedSurfaces(new Set());
     setPanelAnchor(null);
   }, [patientId, permanent, conditionForPanel, conditionKind, conditionNotes, selectedToothIds, selectedSurfaces]);
 
-  const handleAnnul = useCallback((recordId: string) => {
-    annulRecord(recordId);
+  const handleAnnul = useCallback(async (recordId: string) => {
+    try {
+      await annulRecord(recordId);
+    } catch {
+      toast.error("No se pudo anular el registro.");
+      return;
+    }
     setRefresh((r) => r + 1);
   }, []);
 
@@ -330,6 +362,10 @@ export function DentalOdontogram({
       return () => clearTimeout(t);
     }
   }, [panelAnchor, isMobile]);
+
+  if (verticalKey !== "dental") {
+    return null;
+  }
 
   return (
     <div className={cn("space-y-4", className)}>

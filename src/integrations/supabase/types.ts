@@ -438,6 +438,285 @@ export type Database = {
           },
         ]
       }
+      antecedentes: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          alergias: string
+          enfermedades_sistemicas: string
+          medicacion_actual: string
+          embarazo: string
+          habitos_tabaco: string
+          habitos_alcohol: string
+          observaciones: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          alergias?: string
+          enfermedades_sistemicas?: string
+          medicacion_actual?: string
+          embarazo?: string
+          habitos_tabaco?: string
+          habitos_alcohol?: string
+          observaciones?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          alergias?: string
+          enfermedades_sistemicas?: string
+          medicacion_actual?: string
+          embarazo?: string
+          habitos_tabaco?: string
+          habitos_alcohol?: string
+          observaciones?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      evoluciones: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          date: string
+          time: string
+          doctor_id: string
+          doctor_name: string
+          procedure_ids: string[]
+          notes: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          date: string
+          time?: string
+          doctor_id?: string
+          doctor_name?: string
+          procedure_ids?: string[]
+          notes?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          date?: string
+          time?: string
+          doctor_id?: string
+          doctor_name?: string
+          procedure_ids?: string[]
+          notes?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      recetas: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          date: string
+          doctor_id: string
+          doctor_name: string
+          medicamentos: Json
+          indicaciones_generales: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          date: string
+          doctor_id?: string
+          doctor_name?: string
+          medicamentos?: Json
+          indicaciones_generales?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          date?: string
+          doctor_id?: string
+          doctor_name?: string
+          medicamentos?: Json
+          indicaciones_generales?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      consentimientos: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          type: string
+          date: string
+          signed: boolean
+          signed_at: string | null
+          signed_by_name: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          type: string
+          date: string
+          signed?: boolean
+          signed_at?: string | null
+          signed_by_name?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          type?: string
+          date?: string
+          signed?: boolean
+          signed_at?: string | null
+          signed_by_name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      odontogram_records: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          permanent: boolean
+          tooth_id: string
+          condition: string
+          surfaces: string[]
+          record_type: string
+          condition_kind: string | null
+          procedure_id: string | null
+          procedure_name: string | null
+          doctor_id: string | null
+          quantity: number | null
+          notes: string | null
+          created_at: string
+          annulled_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          permanent: boolean
+          tooth_id: string
+          condition: string
+          surfaces?: string[]
+          record_type?: string
+          condition_kind?: string | null
+          procedure_id?: string | null
+          procedure_name?: string | null
+          doctor_id?: string | null
+          quantity?: number | null
+          notes?: string | null
+          created_at?: string
+          annulled_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          permanent?: boolean
+          tooth_id?: string
+          condition?: string
+          surfaces?: string[]
+          record_type?: string
+          condition_kind?: string | null
+          procedure_id?: string | null
+          procedure_name?: string | null
+          doctor_id?: string | null
+          quantity?: number | null
+          notes?: string | null
+          created_at?: string
+          annulled_at?: string | null
+        }
+        Relationships: []
+      }
+      treatment_plans: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          number: string
+          name: string
+          professional_id: string
+          professional_name: string
+          specialty: string | null
+          collaborators: string[]
+          branch: string | null
+          convenio: string | null
+          total_budget: number
+          discount_percent: number
+          realizado: number
+          paid: number
+          status: string
+          last_appointment_date: string | null
+          last_appointment_time: string | null
+          prestaciones: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          number: string
+          name: string
+          professional_id?: string
+          professional_name?: string
+          specialty?: string | null
+          collaborators?: string[]
+          branch?: string | null
+          convenio?: string | null
+          total_budget?: number
+          discount_percent?: number
+          realizado?: number
+          paid?: number
+          status?: string
+          last_appointment_date?: string | null
+          last_appointment_time?: string | null
+          prestaciones?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          number?: string
+          name?: string
+          professional_id?: string
+          professional_name?: string
+          specialty?: string | null
+          collaborators?: string[]
+          branch?: string | null
+          convenio?: string | null
+          total_budget?: number
+          discount_percent?: number
+          realizado?: number
+          paid?: number
+          status?: string
+          last_appointment_date?: string | null
+          last_appointment_time?: string | null
+          prestaciones?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

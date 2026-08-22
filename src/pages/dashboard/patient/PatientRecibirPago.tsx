@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import type { Patient } from "@/data/mockData";
 import {
@@ -60,10 +60,22 @@ export default function PatientRecibirPago() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
 
-  const plansWithBalance = useMemo(
-    () => getPlansWithBalanceByPatient(patient.id),
-    [patient.id, refresh]
-  );
+  const [plansWithBalance, setPlansWithBalance] = useState<TreatmentPlan[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPlansWithBalanceByPatient(patient.id)
+      .then((data) => {
+        if (!cancelled) setPlansWithBalance(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los planes con saldo.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.id, refresh]);
+
   const cuotas = useMemo(() => buildMockCuotas(plansWithBalance), [plansWithBalance]);
 
   const totalAfterDiscount = (p: TreatmentPlan) =>
@@ -77,28 +89,32 @@ export default function PatientRecibirPago() {
     setPayPlanOpen(true);
   };
 
-  const handleConfirmPayPlan = () => {
+  const handleConfirmPayPlan = async () => {
     if (!selectedPlanId || !amount) return;
     const num = parseFloat(amount.replace(",", "."));
     if (Number.isNaN(num) || num <= 0) {
       toast.error("Ingrese un monto válido");
       return;
     }
-    applyPaymentToPlan(selectedPlanId, num);
-    addPayment({
-      patientId: patient.id,
-      date: new Date().toISOString().slice(0, 10),
-      amount: num,
-      method: "Efectivo (mock)",
-      reference: `PLAN-${selectedPlanId}`,
-      status: "completado",
-      description: "Abono a plan de tratamiento",
-    });
-    toast.success(`Pago de $${num.toLocaleString()} registrado`);
-    setPayPlanOpen(false);
-    setSelectedPlanId(null);
-    setAmount("");
-    setRefresh((r) => r + 1);
+    try {
+      await applyPaymentToPlan(selectedPlanId, num);
+      addPayment({
+        patientId: patient.id,
+        date: new Date().toISOString().slice(0, 10),
+        amount: num,
+        method: "Efectivo (mock)",
+        reference: `PLAN-${selectedPlanId}`,
+        status: "completado",
+        description: "Abono a plan de tratamiento",
+      });
+      toast.success(`Pago de $${num.toLocaleString()} registrado`);
+      setPayPlanOpen(false);
+      setSelectedPlanId(null);
+      setAmount("");
+      setRefresh((r) => r + 1);
+    } catch {
+      toast.error("No se pudo registrar el pago.");
+    }
   };
 
   const handleOpenPayCuota = () => {
@@ -109,28 +125,32 @@ export default function PatientRecibirPago() {
     setPayCuotaOpen(true);
   };
 
-  const handleConfirmPayCuota = () => {
+  const handleConfirmPayCuota = async () => {
     if (!selectedPlanId || !amount) return;
     const num = parseFloat(amount.replace(",", "."));
     if (Number.isNaN(num) || num <= 0) {
       toast.error("Ingrese un monto válido");
       return;
     }
-    applyPaymentToPlan(selectedPlanId, num);
-    addPayment({
-      patientId: patient.id,
-      date: new Date().toISOString().slice(0, 10),
-      amount: num,
-      method: "Cuota (mock)",
-      reference: `CUOTA-${selectedPlanId}`,
-      status: "completado",
-      description: "Pago de cuota",
-    });
-    toast.success(`Cuota de $${num.toLocaleString()} registrada`);
-    setPayCuotaOpen(false);
-    setSelectedPlanId(null);
-    setAmount("");
-    setRefresh((r) => r + 1);
+    try {
+      await applyPaymentToPlan(selectedPlanId, num);
+      addPayment({
+        patientId: patient.id,
+        date: new Date().toISOString().slice(0, 10),
+        amount: num,
+        method: "Cuota (mock)",
+        reference: `CUOTA-${selectedPlanId}`,
+        status: "completado",
+        description: "Pago de cuota",
+      });
+      toast.success(`Cuota de $${num.toLocaleString()} registrada`);
+      setPayCuotaOpen(false);
+      setSelectedPlanId(null);
+      setAmount("");
+      setRefresh((r) => r + 1);
+    } catch {
+      toast.error("No se pudo registrar el pago.");
+    }
   };
 
   return (

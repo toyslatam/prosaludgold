@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
-import { getPlanById } from "@/lib/patients/treatmentPlans";
+import { getPlanById, type TreatmentPlan } from "@/lib/patients/treatmentPlans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,8 +24,31 @@ export default function PatientPlanDetail() {
   const navigate = useNavigate();
   const { basePath } = useDemo();
 
-  const plan =
-    patient.id && planId ? getPlanById(patient.id, planId) : undefined;
+  const [plan, setPlan] = useState<TreatmentPlan | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!patient.id || !planId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getPlanById(patient.id, planId)
+      .then((data) => {
+        if (!cancelled) setPlan(data);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.id, planId]);
+
+  if (loading) {
+    return null;
+  }
 
   if (!plan) {
     return (

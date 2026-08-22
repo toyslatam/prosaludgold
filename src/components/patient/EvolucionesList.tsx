@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus } from "lucide-react";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getEvolucionesByPatient, addEvolucion } from "@/lib/patients/evoluciones";
+import { getEvolucionesByPatient, addEvolucion, type Evolucion } from "@/lib/patients/evoluciones";
 import { getProcedures } from "@/lib/agenda/procedures";
 import { mockDoctors } from "@/data/mockData";
 import { getPatientById } from "@/lib/patients/repository";
@@ -44,10 +44,21 @@ export function EvolucionesList({ patientId, onRefresh }: EvolucionesListProps) 
   const defaultDoctorId = patient?.assignedDoctorId ?? mockDoctors[0]?.id;
   const procedures = useMemo(() => getProcedures("dental"), []);
 
-  const evoluciones = useMemo(
-    () => getEvolucionesByPatient(patientId),
-    [patientId, refresh]
-  );
+  const [evoluciones, setEvoluciones] = useState<Evolucion[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getEvolucionesByPatient(patientId)
+      .then((data) => {
+        if (!cancelled) setEvoluciones(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar las evoluciones.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, refresh]);
 
   const handleOpenModal = () => {
     setDate(new Date().toISOString().slice(0, 10));
@@ -58,25 +69,29 @@ export function EvolucionesList({ patientId, onRefresh }: EvolucionesListProps) 
     setModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const doctor = mockDoctors.find((d) => d.id === (doctorId || defaultDoctorId));
     if (!doctor) {
       toast.error("Seleccione un profesional");
       return;
     }
-    addEvolucion({
-      patientId,
-      date,
-      time,
-      doctorId: doctorId || defaultDoctorId,
-      doctorName: doctor.name,
-      procedureIds: procedureIds.length ? procedureIds : undefined,
-      notes,
-    });
-    setRefresh((r) => r + 1);
-    onRefresh?.();
-    setModalOpen(false);
-    toast.success("Evolución guardada");
+    try {
+      await addEvolucion({
+        patientId,
+        date,
+        time,
+        doctorId: doctorId || defaultDoctorId,
+        doctorName: doctor.name,
+        procedureIds: procedureIds.length ? procedureIds : undefined,
+        notes,
+      });
+      setRefresh((r) => r + 1);
+      onRefresh?.();
+      setModalOpen(false);
+      toast.success("Evolución guardada");
+    } catch {
+      toast.error("No se pudo guardar la evolución.");
+    }
   };
 
   const toggleProcedure = (id: string) => {

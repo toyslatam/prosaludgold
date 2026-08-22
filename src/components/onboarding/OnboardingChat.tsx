@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot } from "lucide-react";
+import DOMPurify from "dompurify";
+import { Send, Bot, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "./useOnboardingAgent";
 
 interface Props {
   messages: ChatMessage[];
   isLoading: boolean;
+  isSimulated?: boolean;
   onSend: (text: string) => void;
 }
 
 function renderMarkdown(text: string) {
-  return text
+  const withTags = text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br/>");
+  return DOMPurify.sanitize(withTags, { ALLOWED_TAGS: ["strong", "br"] });
 }
 
-export function OnboardingChat({ messages, isLoading, onSend }: Props) {
+export function OnboardingChat({ messages, isLoading, isSimulated, onSend }: Props) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +36,15 @@ export function OnboardingChat({ messages, isLoading, onSend }: Props) {
 
   return (
     <div className="flex flex-col h-full">
+      {isSimulated && (
+        <div
+          className="flex items-center gap-2 px-4 py-2 text-xs shrink-0"
+          style={{ background: "rgba(234,179,8,0.12)", color: "rgba(253,224,71,0.9)" }}
+        >
+          <WifiOff className="w-3.5 h-3.5 shrink-0" />
+          <span>Asistente IA no disponible ahora mismo — respondiendo en modo guiado sin conexión.</span>
+        </div>
+      )}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <AnimatePresence initial={false}>

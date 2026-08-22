@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
@@ -32,7 +32,22 @@ export default function PatientPlanes() {
   const { basePath } = useDemo();
   const [filter, setFilter] = useState<"activos" | "todos">("activos");
 
-  const allPlans = useMemo(() => getPlansByPatient(patient.id), [patient.id]);
+  const [allPlans, setAllPlans] = useState<TreatmentPlan[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPlansByPatient(patient.id)
+      .then((data) => {
+        if (!cancelled) setAllPlans(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los planes de tratamiento.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.id]);
+
   const plans = useMemo(() => {
     if (filter === "activos") {
       return allPlans.filter((p) => p.status !== "finalizado");

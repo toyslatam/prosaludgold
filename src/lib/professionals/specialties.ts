@@ -21,7 +21,7 @@ function save(data: Specialty[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-const SEED_BY_VERTICAL: Record<VerticalKey, Omit<Specialty, "id" | "createdAt" | "updatedAt">[]> = {
+const SEED_BY_VERTICAL: Record<Exclude<VerticalKey, "multi">, Omit<Specialty, "id" | "createdAt" | "updatedAt">[]> = {
   dental: [
     { vertical: "dental", name: "Ortodoncia", isActive: true },
     { vertical: "dental", name: "Endodoncia", isActive: true },
@@ -58,7 +58,8 @@ function seedIfNeeded(vertical: VerticalKey): void {
   const hasVertical = list.some((s) => s.vertical === vertical);
   if (hasVertical) return;
   const now = new Date().toISOString();
-  const items = SEED_BY_VERTICAL[vertical].map((s, i) => ({
+  const seed = SEED_BY_VERTICAL[vertical as Exclude<VerticalKey, "multi">] ?? SEED_BY_VERTICAL.dental;
+  const items = seed.map((s, i) => ({
     ...s,
     id: `spec-${vertical}-${i + 1}-${Date.now()}`,
     createdAt: now,

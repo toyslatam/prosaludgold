@@ -1,4 +1,7 @@
-/** Antecedentes médicos (dental) por paciente. */
+/** Antecedentes médicos (dental) por paciente. Persistidos en Supabase (tabla `antecedentes`). */
+
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 export interface Antecedentes {
   patientId: string;
@@ -12,39 +15,55 @@ export interface Antecedentes {
   updatedAt: string;
 }
 
-const STORAGE_KEY = "psg_antecedentes";
-
-function loadAll(): Antecedentes[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Antecedentes[];
-  } catch {
-    return [];
-  }
+function fromRow(row: Tables<"antecedentes">): Antecedentes {
+  return {
+    patientId: row.patient_id,
+    alergias: row.alergias,
+    enfermedadesSistemicas: row.enfermedades_sistemicas,
+    medicacionActual: row.medicacion_actual,
+    embarazo: row.embarazo,
+    habitosTabaco: row.habitos_tabaco,
+    habitosAlcohol: row.habitos_alcohol,
+    observaciones: row.observaciones,
+    updatedAt: row.updated_at,
+  };
 }
 
-function saveAll(list: Antecedentes[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+export async function getAntecedentesByPatient(patientId: string): Promise<Antecedentes | null> {
+  const { data, error } = await supabase
+    .from("antecedentes")
+    .select("*")
+    .eq("patient_id", patientId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? fromRow(data) : null;
 }
 
-export function getAntecedentesByPatient(patientId: string): Antecedentes | null {
-  const list = loadAll();
-  return list.find((a) => a.patientId === patientId) ?? null;
-}
+export async function saveAntecedentes(data: Antecedentes): Promise<Antecedentes> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error("No autenticado");
 
-export function saveAntecedentes(data: Antecedentes): Antecedentes {
-  const list = loadAll();
-  const now = new Date().toISOString();
-  const record: Antecedentes = { ...data, updatedAt: now };
-  const idx = list.findIndex((a) => a.patientId === data.patientId);
-  if (idx >= 0) {
-    list[idx] = record;
-  } else {
-    list.push(record);
-  }
-  saveAll(list);
-  return record;
+  const { data: row, error } = await supabase
+    .from("antecedentes")
+    .upsert(
+      {
+        user_id: user.id,
+        patient_id: data.patientId,
+        alergias: data.alergias,
+        enfermedades_sistemicas: data.enfermedadesSistemicas,
+        medicacion_actual: data.medicacionActual,
+        embarazo: data.embarazo,
+        habitos_tabaco: data.habitosTabaco,
+        habitos_alcohol: data.habitosAlcohol,
+        observaciones: data.observaciones,
+      },
+      { onConflict: "user_id,patient_id" }
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return fromRow(row);
 }
 
 export function getEmptyAntecedentes(patientId: string): Antecedentes {

@@ -72,6 +72,7 @@ export function useOnboardingAgent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [simulatedStep, setSimulatedStep] = useState(0);
+  const [isSimulated, setIsSimulated] = useState(false);
 
   const sendMessage = useCallback(async (userInput: string) => {
     if (!userInput.trim() || isLoading) return;
@@ -101,7 +102,9 @@ export function useOnboardingAgent() {
 
       const response: AgentResponse = data;
       processResponse(response, newMessages);
-    } catch {
+    } catch (err) {
+      console.error("onboarding-agent unavailable, using simulated fallback:", err);
+      setIsSimulated(true);
       // Fallback: simulated responses
       const simIndex = simulatedStep % SIMULATED_RESPONSES.length;
       const simResponse = { ...SIMULATED_RESPONSES[simIndex] };
@@ -180,5 +183,5 @@ export function useOnboardingAgent() {
     setIsLoading(false);
   }
 
-  return { messages, collectedData, isLoading, isDone, sendMessage };
+  return { messages, collectedData, isLoading, isDone, isSimulated, sendMessage };
 }

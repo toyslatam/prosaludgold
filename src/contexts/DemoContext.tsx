@@ -5,10 +5,10 @@
 import { createContext, useContext, useMemo } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { getDemoConfig, isValidVertical, buildMultiConfig } from "@/config/demos";
-import type { VerticalConfig } from "@/config/demos";
+import type { VerticalConfig, VerticalKey } from "@/config/demos";
 
 type DemoContextValue = {
-  vertical: string;
+  vertical: VerticalKey;
   basePath: string;
   isDental: boolean;
 };
@@ -39,7 +39,7 @@ export function DemoProvider({ children, enabledModules }: DemoProviderProps) {
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }
 
-export function useDemo() {
+export function useDemo(): DemoContextValue {
   const ctx = useContext(DemoContext);
   if (!ctx) {
     return {

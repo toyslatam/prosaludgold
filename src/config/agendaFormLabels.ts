@@ -17,7 +17,7 @@ export interface AgendaFormLabels {
   doctorHintAssigned: string;
 }
 
-const LABELS: Record<VerticalKey, AgendaFormLabels> = {
+const LABELS: Record<Exclude<VerticalKey, "multi">, AgendaFormLabels> = {
   dental: {
     procedureLabel: "Procedimiento",
     procedureSearchPlaceholder: "Buscar procedimiento…",

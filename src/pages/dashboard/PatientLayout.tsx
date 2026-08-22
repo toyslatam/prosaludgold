@@ -21,10 +21,10 @@ export default function PatientLayout() {
     toast.info("Redirigiendo a Agenda para agendar cita con este paciente");
   }, [navigate, patientId, demoBasePath]);
 
-  const handleHistoriaClinica = useCallback(() => {
+  const handleHistoriaClinica = useCallback(async () => {
     if (!patient) return;
     try {
-      generateClinicalHistoryPdf(patient);
+      await generateClinicalHistoryPdf(patient);
       toast.success("Historia clínica descargada");
     } catch (err) {
       console.error(err);

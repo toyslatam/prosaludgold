@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import {
   getAntecedentesByPatient,
   saveAntecedentes,
   getEmptyAntecedentes,
+  type Antecedentes,
 } from "@/lib/patients/antecedentes";
 import { toast } from "sonner";
 
@@ -28,25 +29,45 @@ const SECTIONS = [
 export function AntecedentesForm({ patientId }: AntecedentesFormProps) {
   const [editing, setEditing] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [data, setData] = useState<Antecedentes>(() => getEmptyAntecedentes(patientId));
+  const [form, setForm] = useState<Antecedentes>(data);
+  const [saving, setSaving] = useState(false);
 
-  const data = useMemo(() => {
-    const a = getAntecedentesByPatient(patientId);
-    return a ?? getEmptyAntecedentes(patientId);
+  useEffect(() => {
+    let cancelled = false;
+    getAntecedentesByPatient(patientId)
+      .then((a) => {
+        if (cancelled) return;
+        const next = a ?? getEmptyAntecedentes(patientId);
+        setData(next);
+        setForm(next);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los antecedentes.");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [patientId, refresh]);
-
-  const [form, setForm] = useState(data);
 
   const startEdit = () => {
     setForm({ ...data });
     setEditing(true);
   };
 
-  const handleSave = () => {
-    saveAntecedentes({ ...form, patientId });
-    setRefresh((r) => r + 1);
-    setEditing(false);
-    toast.success("Antecedentes guardados");
-  };
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      await saveAntecedentes({ ...form, patientId });
+      setRefresh((r) => r + 1);
+      setEditing(false);
+      toast.success("Antecedentes guardados");
+    } catch {
+      toast.error("No se pudieron guardar los antecedentes.");
+    } finally {
+      setSaving(false);
+    }
+  }, [form, patientId]);
 
   const handleCancel = () => {
     setForm({ ...data });
@@ -63,11 +84,11 @@ export function AntecedentesForm({ patientId }: AntecedentesFormProps) {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCancel}>
+            <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleSave}>
-              Guardar
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
             </Button>
           </div>
         )}

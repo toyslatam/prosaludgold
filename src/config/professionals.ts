@@ -20,7 +20,7 @@ export interface ProfessionalsConfig {
   commissionLabel: string;
 }
 
-const configs: Record<VerticalKey, ProfessionalsConfig> = {
+const configs: Record<Exclude<VerticalKey, "multi">, ProfessionalsConfig> = {
   dental: {
     vertical: "dental",
     sectionTitle: "Especialistas",

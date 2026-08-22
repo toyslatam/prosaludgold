@@ -190,11 +190,11 @@ export function createProcedure(vertical: VerticalKey, data: Omit<Procedure, "id
 }
 
 export function deleteProcedure(vertical: VerticalKey, id: string): void {
-  saveProcedures(vertical, loadProcedures(vertical, true).filter((p) => p.id !== id));
+  saveProcedures(vertical, loadProcedures(vertical).filter((p) => p.id !== id));
 }
 
 export function archiveProcedure(vertical: VerticalKey, id: string): void {
-  const list = loadProcedures(vertical, true);
+  const list = loadProcedures(vertical);
   const idx = list.findIndex((p) => p.id === id);
   if (idx === -1) return;
   list[idx] = { ...list[idx], isActive: false };
@@ -202,7 +202,7 @@ export function archiveProcedure(vertical: VerticalKey, id: string): void {
 }
 
 export function unarchiveProcedure(vertical: VerticalKey, id: string): void {
-  const list = loadProcedures(vertical, true);
+  const list = loadProcedures(vertical);
   const idx = list.findIndex((p) => p.id === id);
   if (idx === -1) return;
   list[idx] = { ...list[idx], isActive: true };

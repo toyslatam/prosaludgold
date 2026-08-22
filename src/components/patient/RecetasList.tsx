@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, Pencil, Trash2 } from "lucide-react";
@@ -55,10 +55,21 @@ export function RecetasList({ patientId }: RecetasListProps) {
 
   const patient = getPatientById(patientId);
   const defaultDoctorId = patient?.assignedDoctorId ?? mockDoctors[0]?.id;
-  const recetas = useMemo(
-    () => getRecetasByPatient(patientId),
-    [patientId, refresh]
-  );
+  const [recetas, setRecetas] = useState<Receta[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRecetasByPatient(patientId)
+      .then((data) => {
+        if (!cancelled) setRecetas(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar las recetas.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId, refresh]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -94,7 +105,7 @@ export function RecetasList({ patientId }: RecetasListProps) {
     setMedicamentos((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : [{ ...EMPTY_MED }]);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const doctor = mockDoctors.find((d) => d.id === (doctorId || defaultDoctorId));
     if (!doctor) {
       toast.error("Seleccione un profesional");
@@ -109,26 +120,34 @@ export function RecetasList({ patientId }: RecetasListProps) {
       medicamentos: meds.length ? meds : [{ ...EMPTY_MED }],
       indicacionesGenerales: indicacionesGenerales.trim(),
     };
-    if (editingId) {
-      const updated = updateReceta(editingId, payload);
-      if (updated) {
+    try {
+      if (editingId) {
+        const updated = await updateReceta(editingId, payload);
+        if (updated) {
+          setRefresh((r) => r + 1);
+          toast.success("Receta actualizada");
+          setModalOpen(false);
+        }
+      } else {
+        await addReceta(payload);
         setRefresh((r) => r + 1);
-        toast.success("Receta actualizada");
+        toast.success("Receta creada");
         setModalOpen(false);
       }
-    } else {
-      addReceta(payload);
-      setRefresh((r) => r + 1);
-      toast.success("Receta creada");
-      setModalOpen(false);
+    } catch {
+      toast.error("No se pudo guardar la receta.");
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("¿Eliminar esta receta?")) return;
-    if (removeReceta(id)) {
-      setRefresh((r) => r + 1);
-      toast.success("Receta eliminada");
+    try {
+      if (await removeReceta(id)) {
+        setRefresh((r) => r + 1);
+        toast.success("Receta eliminada");
+      }
+    } catch {
+      toast.error("No se pudo eliminar la receta.");
     }
   };
 
