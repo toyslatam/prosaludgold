@@ -27,6 +27,7 @@ import { getPatientById, updatePatient } from "@/lib/patients/repository";
 import { getClinicalEventsByPatient, type ClinicalEvent } from "@/lib/patients/clinicalHistory";
 import { BENEFITS_OPTIONS } from "@/config/patientOptions";
 import { useAppConfig } from "@/contexts/AppConfigContext";
+import { useDemo } from "@/contexts/DemoContext";
 
 function getEventTypeLabel(e: ClinicalEvent): string {
   switch (e.type) {
@@ -57,7 +58,10 @@ function getEventNote(e: ClinicalEvent): string {
 export default function PatientData() {
   const { patient: contextPatient } = useOutletContext<{ patient: Patient }>();
   const { sedes } = useAppConfig();
-  const activeSedes = sedes.filter((s) => s.active);
+  const { vertical } = useDemo();
+  const activeSedes = sedes.filter(
+    (s) => s.active && (vertical === "multi" || !s.modules_enabled?.length || s.modules_enabled.includes(vertical))
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [editForm, setEditForm] = useState({

@@ -39,7 +39,9 @@ const Pacientes = () => {
   const navigate = useNavigate();
   const { basePath, vertical } = useDemo();
   const { enabledModules, sedes } = useAppConfig();
-  const activeSedes = sedes.filter((s) => s.active);
+  const activeSedes = sedes.filter(
+    (s) => s.active && (vertical === "multi" || !s.modules_enabled?.length || s.modules_enabled.includes(vertical))
+  );
 
   const { data: patients = [], isLoading } = usePatients(vertical);
   const insert = useInsertPatient();

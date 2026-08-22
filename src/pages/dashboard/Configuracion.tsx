@@ -80,12 +80,28 @@ interface SedeRowProps {
 function SedeRow({ sede, onUpdate, onDelete, enabledModules }: SedeRowProps) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: sede.name, address: sede.address ?? "", phone: sede.phone ?? "" });
+  const [sedeModules, setSedeModules] = useState<VerticalKey[]>(
+    sede.modules_enabled?.length ? sede.modules_enabled : enabledModules
+  );
   const [saving, setSaving] = useState(false);
+
+  const toggleSedeModule = (key: VerticalKey) => {
+    setSedeModules((prev) => {
+      const has = prev.includes(key);
+      if (has && prev.length === 1) return prev; // al menos un módulo
+      return has ? prev.filter((m) => m !== key) : [...prev, key];
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onUpdate(sede.id, { name: form.name, address: form.address || null, phone: form.phone || null });
+      await onUpdate(sede.id, {
+        name: form.name,
+        address: form.address || null,
+        phone: form.phone || null,
+        modules_enabled: sedeModules,
+      });
       setEditing(false);
       toast.success("Sede actualizada");
     } catch {
@@ -141,6 +157,28 @@ function SedeRow({ sede, onUpdate, onDelete, enabledModules }: SedeRowProps) {
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="+507 300-0000"
               />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Módulos que atiende esta sede</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {enabledModules.map((m) => {
+                const active = sedeModules.includes(m);
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => toggleSedeModule(m)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {MODULE_LABELS[m]}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="flex gap-2 justify-end">
@@ -271,8 +309,17 @@ const Configuracion = () => {
 
   // New sede form
   const [newSede, setNewSede] = useState({ name: "", address: "", phone: "" });
+  const [newSedeModules, setNewSedeModules] = useState<VerticalKey[]>(form.modules_enabled);
   const [addingSede, setAddingSede] = useState(false);
   const [showNewSede, setShowNewSede] = useState(false);
+
+  const toggleNewSedeModule = (key: VerticalKey) => {
+    setNewSedeModules((prev) => {
+      const has = prev.includes(key);
+      if (has && prev.length === 1) return prev;
+      return has ? prev.filter((m) => m !== key) : [...prev, key];
+    });
+  };
 
   const handleAddSede = async () => {
     if (!newSede.name.trim()) return;
@@ -282,12 +329,13 @@ const Configuracion = () => {
         name: newSede.name.trim(),
         address: newSede.address || null,
         phone: newSede.phone || null,
-        modules_enabled: form.modules_enabled,
+        modules_enabled: newSedeModules,
         active: true,
         schedule: {},
         email: null,
       });
       setNewSede({ name: "", address: "", phone: "" });
+      setNewSedeModules(form.modules_enabled);
       setShowNewSede(false);
       toast.success("Sede agregada");
     } catch {
@@ -418,6 +466,28 @@ const Configuracion = () => {
                   />
                 </div>
               </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Módulos que atiende esta sede</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {form.modules_enabled.map((m) => {
+                    const active = newSedeModules.includes(m);
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => toggleNewSedeModule(m)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        {MODULE_LABELS[m]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => { setShowNewSede(false); setNewSede({ name: "", address: "", phone: "" }); }}>
                   <X className="w-3.5 h-3.5 mr-1" /> Cancelar
@@ -430,7 +500,13 @@ const Configuracion = () => {
             </div>
           )}
 
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowNewSede(true)} disabled={showNewSede}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => { setNewSedeModules(form.modules_enabled); setShowNewSede(true); }}
+            disabled={showNewSede}
+          >
             <Plus className="w-4 h-4" /> Agregar sede
           </Button>
         </div>
