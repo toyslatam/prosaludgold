@@ -215,6 +215,90 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          id: string
+          user_id: string
+          patient_id: string
+          treatment_plan_id: string | null
+          buyer_name: string
+          buyer_ruc: string | null
+          buyer_email: string | null
+          items: Json
+          subtotal: number
+          tax_total: number
+          total: number
+          currency: string
+          status: Database["public"]["Enums"]["invoice_status"]
+          provider: string
+          external_id: string | null
+          cufe: string | null
+          pdf_url: string | null
+          error_message: string | null
+          created_at: string
+          issued_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string
+          patient_id: string
+          treatment_plan_id?: string | null
+          buyer_name: string
+          buyer_ruc?: string | null
+          buyer_email?: string | null
+          items?: Json
+          subtotal?: number
+          tax_total?: number
+          total?: number
+          currency?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          provider?: string
+          external_id?: string | null
+          cufe?: string | null
+          pdf_url?: string | null
+          error_message?: string | null
+          created_at?: string
+          issued_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          patient_id?: string
+          treatment_plan_id?: string | null
+          buyer_name?: string
+          buyer_ruc?: string | null
+          buyer_email?: string | null
+          items?: Json
+          subtotal?: number
+          tax_total?: number
+          total?: number
+          currency?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          provider?: string
+          external_id?: string | null
+          cufe?: string | null
+          pdf_url?: string | null
+          error_message?: string | null
+          created_at?: string
+          issued_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_treatment_plan_id_fkey"
+            columns: ["treatment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           category: string
@@ -756,6 +840,7 @@ export type Database = {
         | "atendida"
         | "no_asistio"
       cash_entry_type: "ingreso" | "egreso"
+      invoice_status: "draft" | "pending" | "issued" | "error" | "cancelled"
       lab_order_status: "solicitado" | "en_proceso" | "recibido" | "entregado"
       treatment_status: "pendiente" | "en_curso" | "completado"
     }
@@ -893,6 +978,7 @@ export const Constants = {
         "no_asistio",
       ],
       cash_entry_type: ["ingreso", "egreso"],
+      invoice_status: ["draft", "pending", "issued", "error", "cancelled"],
       lab_order_status: ["solicitado", "en_proceso", "recibido", "entregado"],
       treatment_status: ["pendiente", "en_curso", "completado"],
     },
