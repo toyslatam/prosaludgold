@@ -25,6 +25,7 @@ import { useAppConfig } from "@/contexts/AppConfigContext";
 import { PATH_KEY_TO_PATH } from "@/config/demos/navSpec";
 import { supabase } from "@/integrations/supabase/client";
 import ProSaludLogo from "@/components/ProSaludLogo";
+import { ModuleSwitcher } from "@/components/ModuleSwitcher";
 
 const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   inicio: LayoutDashboard,
@@ -93,6 +94,8 @@ const DashboardLayout = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        <ModuleSwitcher />
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           {sidebarItems.map((item) => (
