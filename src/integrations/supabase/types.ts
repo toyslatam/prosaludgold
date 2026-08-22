@@ -321,6 +321,7 @@ export type Database = {
           branch: string | null
           assigned_doctor_id: string | null
           collaborators: string[]
+          modules_enabled: string[]
         }
         Insert: {
           balance?: number
@@ -340,6 +341,7 @@ export type Database = {
           branch?: string | null
           assigned_doctor_id?: string | null
           collaborators?: string[]
+          modules_enabled?: string[]
         }
         Update: {
           balance?: number
@@ -359,6 +361,7 @@ export type Database = {
           branch?: string | null
           assigned_doctor_id?: string | null
           collaborators?: string[]
+          modules_enabled?: string[]
         }
         Relationships: []
       }

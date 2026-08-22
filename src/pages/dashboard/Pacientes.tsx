@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { usePatients, useInsertPatient } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +15,10 @@ const Pacientes = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", cedula: "", phone: "", email: "", birth_date: "" });
   const navigate = useNavigate();
-  const { basePath } = useDemo();
+  const { basePath, vertical } = useDemo();
+  const { enabledModules } = useAppConfig();
 
-  const { data: patients = [], isLoading } = usePatients();
+  const { data: patients = [], isLoading } = usePatients(vertical);
   const insert = useInsertPatient();
 
   const filtered = patients.filter(
@@ -35,6 +37,7 @@ const Pacientes = () => {
         phone: form.phone || null,
         email: form.email || null,
         birth_date: form.birth_date || null,
+        modules_enabled: vertical === "multi" ? enabledModules : [vertical],
       },
       {
         onSuccess: () => {

@@ -103,14 +103,16 @@ function mapToAppointmentWithDetails(apt: AppointmentJoined): AppointmentWithDet
 
 // ── PATIENTS ──────────────────────────────────────────────────
 
-export const usePatients = () =>
+/** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
+export const usePatients = (vertical?: string) =>
   useQuery({
-    queryKey: ["patients"],
+    queryKey: ["patients", vertical ?? "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("patients")
-        .select("*")
-        .order("name");
+      let query = supabase.from("patients").select("*").order("name");
+      if (vertical && vertical !== "multi") {
+        query = query.contains("modules_enabled", [vertical]);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

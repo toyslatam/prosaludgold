@@ -24,10 +24,10 @@ const AtencionClinica = () => {
   const [patients, setPatients] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
-    getPatients()
+    getPatients(vertical)
       .then((data) => setPatients(data.map((p) => ({ id: p.id, name: p.name }))))
       .catch(() => toast.error("No se pudieron cargar los pacientes."));
-  }, []);
+  }, [vertical]);
 
   const patientNameById = useMemo(() => {
     const map = new Map<string, string>();

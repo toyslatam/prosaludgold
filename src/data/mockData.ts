@@ -36,6 +36,8 @@ export interface Patient {
   assignedDoctorId?: string;
   /** Colaboradores (nombres o ids) */
   collaborators?: string[];
+  /** Módulos (verticales) a los que pertenece este paciente */
+  modulesEnabled?: string[];
 }
 
 export interface Treatment {

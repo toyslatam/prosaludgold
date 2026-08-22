@@ -20,11 +20,17 @@ function fromRow(row: Tables<"patients">): Patient {
     branch: row.branch ?? undefined,
     assignedDoctorId: row.assigned_doctor_id ?? undefined,
     collaborators: row.collaborators?.length ? row.collaborators : undefined,
+    modulesEnabled: row.modules_enabled?.length ? row.modules_enabled : undefined,
   };
 }
 
-export async function getPatients(): Promise<Patient[]> {
-  const { data, error } = await supabase.from("patients").select("*").order("name");
+/** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
+export async function getPatients(vertical?: string): Promise<Patient[]> {
+  let query = supabase.from("patients").select("*").order("name");
+  if (vertical && vertical !== "multi") {
+    query = query.contains("modules_enabled", [vertical]);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map(fromRow);
 }
