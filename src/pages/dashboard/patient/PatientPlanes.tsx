@@ -2,10 +2,19 @@ import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
-import { getPlansByPatient } from "@/lib/patients/treatmentPlans";
-import type { TreatmentPlan, PlanFinancialStatus } from "@/lib/patients/treatmentPlans";
+import { getPlansByPatient, addTreatmentPlan } from "@/lib/patients/treatmentPlans";
+import type { TreatmentPlan, PlanFinancialStatus, Prestacion } from "@/lib/patients/treatmentPlans";
+import { getDoctors } from "@/lib/agenda/repository";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,11 +35,14 @@ const STATUS_LABELS: Record<PlanFinancialStatus, string> = {
   finalizado: "Finalizado",
 };
 
+const EMPTY_PRESTACION = { name: "", price: "" };
+
 export default function PatientPlanes() {
   const { patient } = useOutletContext<{ patient: Patient }>();
   const navigate = useNavigate();
   const { basePath } = useDemo();
   const [filter, setFilter] = useState<"activos" | "todos">("activos");
+  const [refresh, setRefresh] = useState(0);
 
   const [allPlans, setAllPlans] = useState<TreatmentPlan[]>([]);
 
@@ -46,7 +58,7 @@ export default function PatientPlanes() {
     return () => {
       cancelled = true;
     };
-  }, [patient.id]);
+  }, [patient.id, refresh]);
 
   const plans = useMemo(() => {
     if (filter === "activos") {
@@ -55,8 +67,82 @@ export default function PatientPlanes() {
     return allPlans;
   }, [allPlans, filter]);
 
-  const handleNewPlan = () => {
-    toast.info("Crear nuevo plan (próximamente)");
+  const doctors = useMemo(() => getDoctors(), []);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [professionalId, setProfessionalId] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("0");
+  const [prestaciones, setPrestaciones] = useState([{ ...EMPTY_PRESTACION }]);
+  const [saving, setSaving] = useState(false);
+
+  const openCreate = () => {
+    setName("");
+    setProfessionalId(doctors[0]?.id ?? "");
+    setDiscountPercent("0");
+    setPrestaciones([{ ...EMPTY_PRESTACION }]);
+    setModalOpen(true);
+  };
+
+  const addPrestacion = () => setPrestaciones((prev) => [...prev, { ...EMPTY_PRESTACION }]);
+  const updatePrestacion = (index: number, field: "name" | "price", value: string) => {
+    setPrestaciones((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+  const removePrestacion = (index: number) => {
+    setPrestaciones((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      toast.error("Ingrese un nombre para el plan");
+      return;
+    }
+    const doctor = doctors.find((d) => d.id === professionalId);
+    if (!doctor) {
+      toast.error("Seleccione un profesional");
+      return;
+    }
+    const validPrestaciones: Prestacion[] = prestaciones
+      .filter((p) => p.name.trim() && parseFloat(p.price) > 0)
+      .map((p, i) => ({
+        id: `pr-${Date.now()}-${i}`,
+        name: p.name.trim(),
+        price: parseFloat(p.price),
+        paid: 0,
+      }));
+    if (validPrestaciones.length === 0) {
+      toast.error("Agregue al menos una prestación con nombre y precio");
+      return;
+    }
+    const totalBudget = validPrestaciones.reduce((sum, p) => sum + p.price, 0);
+    const discount = parseFloat(discountPercent) || 0;
+
+    setSaving(true);
+    try {
+      await addTreatmentPlan({
+        patientId: patient.id,
+        name: name.trim(),
+        professionalId: doctor.id,
+        professionalName: doctor.name,
+        specialty: doctor.specialty,
+        collaborators: [],
+        branch: doctor.branch,
+        totalBudget,
+        discountPercent: discount,
+        prestaciones: validPrestaciones,
+      });
+      toast.success("Plan de tratamiento creado");
+      setModalOpen(false);
+      setRefresh((r) => r + 1);
+    } catch {
+      toast.error("No se pudo crear el plan de tratamiento.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -74,7 +160,7 @@ export default function PatientPlanes() {
             </SelectContent>
           </Select>
         </div>
-        <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleNewPlan}>
+        <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Nuevo plan de tratamiento
         </Button>
@@ -99,6 +185,84 @@ export default function PatientPlanes() {
           ))}
         </div>
       )}
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nuevo plan de tratamiento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nombre del plan</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Tratamiento de conducto #36"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Profesional a cargo</Label>
+                <Select value={professionalId} onValueChange={setProfessionalId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Descuento comercial (%)</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Prestaciones</Label>
+              {prestaciones.map((p, i) => (
+                <div key={i} className="grid grid-cols-[1fr_140px_auto] gap-2 items-center">
+                  <Input
+                    placeholder="Nombre de la prestación"
+                    value={p.name}
+                    onChange={(e) => updatePrestacion(i, "name", e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Precio"
+                    value={p.price}
+                    onChange={(e) => updatePrestacion(i, "price", e.target.value)}
+                  />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removePrestacion(i)}>
+                    Quitar
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addPrestacion}>
+                + Añadir prestación
+              </Button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreate} disabled={saving}>
+                {saving ? "Creando…" : "Crear plan"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

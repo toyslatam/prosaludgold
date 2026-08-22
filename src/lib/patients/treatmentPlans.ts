@@ -65,6 +65,45 @@ function fromRow(row: Tables<"treatment_plans">): TreatmentPlan {
   };
 }
 
+export async function addTreatmentPlan(
+  data: Omit<TreatmentPlan, "id" | "createdAt" | "number" | "realizado" | "paid" | "status"> & {
+    number?: string;
+  }
+): Promise<TreatmentPlan> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error("No autenticado");
+
+  const number = data.number ?? String(Math.floor(1000 + Math.random() * 9000));
+
+  const { data: row, error } = await supabase
+    .from("treatment_plans")
+    .insert({
+      user_id: user.id,
+      patient_id: data.patientId,
+      number,
+      name: data.name,
+      professional_id: data.professionalId,
+      professional_name: data.professionalName,
+      specialty: data.specialty ?? null,
+      collaborators: data.collaborators ?? [],
+      branch: data.branch ?? null,
+      convenio: data.convenio ?? null,
+      total_budget: data.totalBudget,
+      discount_percent: data.discountPercent,
+      realizado: 0,
+      paid: 0,
+      status: "diagnostico",
+      last_appointment_date: data.lastAppointmentDate ?? null,
+      last_appointment_time: data.lastAppointmentTime ?? null,
+      prestaciones: data.prestaciones as unknown as Tables<"treatment_plans">["prestaciones"],
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return fromRow(row);
+}
+
 export async function getPlansByPatient(patientId: string): Promise<TreatmentPlan[]> {
   const { data, error } = await supabase
     .from("treatment_plans")
