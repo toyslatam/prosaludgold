@@ -53,9 +53,14 @@ export function RecetasList({ patientId }: RecetasListProps) {
   const [indicacionesGenerales, setIndicacionesGenerales] = useState("");
   const [refresh, setRefresh] = useState(0);
 
-  const patient = getPatientById(patientId);
-  const defaultDoctorId = patient?.assignedDoctorId ?? mockDoctors[0]?.id;
+  const [defaultDoctorId, setDefaultDoctorId] = useState<string | undefined>(mockDoctors[0]?.id);
   const [recetas, setRecetas] = useState<Receta[]>([]);
+
+  useEffect(() => {
+    getPatientById(patientId)
+      .then((patient) => setDefaultDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id))
+      .catch(() => {});
+  }, [patientId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +79,7 @@ export function RecetasList({ patientId }: RecetasListProps) {
   const openCreate = () => {
     setEditingId(null);
     setDate(new Date().toISOString().slice(0, 10));
-    setDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id ?? "");
+    setDoctorId(defaultDoctorId ?? "");
     setMedicamentos([{ ...EMPTY_MED }]);
     setIndicacionesGenerales("");
     setModalOpen(true);

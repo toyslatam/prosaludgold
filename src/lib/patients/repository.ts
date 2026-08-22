@@ -1,38 +1,62 @@
 import type { Patient } from "@/data/mockData";
-import { mockPatients } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
-const STORAGE_KEY = "psg_patients";
-
-function loadPatients(): Patient[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [...mockPatients];
-    return JSON.parse(raw) as Patient[];
-  } catch {
-    return [...mockPatients];
-  }
+function fromRow(row: Tables<"patients">): Patient {
+  return {
+    id: row.id,
+    name: row.name,
+    cedula: row.cedula ?? "",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    birthDate: row.birth_date ?? "",
+    lastVisit: row.last_visit ?? "",
+    nextAppointment: row.next_appointment ?? "",
+    balance: Number(row.balance),
+    treatments: [],
+    gender: (row.gender as Patient["gender"]) ?? undefined,
+    address: row.address ?? undefined,
+    benefits: row.benefits ?? undefined,
+    branch: row.branch ?? undefined,
+    assignedDoctorId: row.assigned_doctor_id ?? undefined,
+    collaborators: row.collaborators?.length ? row.collaborators : undefined,
+  };
 }
 
-export function getPatients(): Patient[] {
-  return loadPatients();
+export async function getPatients(): Promise<Patient[]> {
+  const { data, error } = await supabase.from("patients").select("*").order("name");
+  if (error) throw error;
+  return (data ?? []).map(fromRow);
 }
 
-export function getPatientById(id: string): Patient | undefined {
-  return loadPatients().find((p) => p.id === id);
+export async function getPatientById(id: string): Promise<Patient | undefined> {
+  const { data, error } = await supabase.from("patients").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ? fromRow(data) : undefined;
 }
 
-export function updatePatient(
+export async function updatePatient(
   id: string,
   patch: Partial<Pick<Patient, "name" | "cedula" | "phone" | "email" | "address" | "benefits" | "branch" | "assignedDoctorId" | "collaborators" | "lastVisit" | "nextAppointment">>
-): Patient | undefined {
-  const list = loadPatients();
-  const idx = list.findIndex((p) => p.id === id);
-  if (idx === -1) return undefined;
-  list[idx] = { ...list[idx], ...patch };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {
-    return undefined;
-  }
-  return list[idx];
+): Promise<Patient | undefined> {
+  const { data, error } = await supabase
+    .from("patients")
+    .update({
+      ...(patch.name !== undefined && { name: patch.name }),
+      ...(patch.cedula !== undefined && { cedula: patch.cedula }),
+      ...(patch.phone !== undefined && { phone: patch.phone }),
+      ...(patch.email !== undefined && { email: patch.email }),
+      ...(patch.address !== undefined && { address: patch.address }),
+      ...(patch.benefits !== undefined && { benefits: patch.benefits }),
+      ...(patch.branch !== undefined && { branch: patch.branch }),
+      ...(patch.assignedDoctorId !== undefined && { assigned_doctor_id: patch.assignedDoctorId }),
+      ...(patch.collaborators !== undefined && { collaborators: patch.collaborators }),
+      ...(patch.lastVisit !== undefined && { last_visit: patch.lastVisit }),
+      ...(patch.nextAppointment !== undefined && { next_appointment: patch.nextAppointment }),
+    })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data ? fromRow(data) : undefined;
 }

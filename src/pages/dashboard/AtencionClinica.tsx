@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDemo } from "@/contexts/DemoContext";
 import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients, getPatientById } from "@/lib/patients/repository";
+import { toast } from "sonner";
 import { getDoctors } from "@/lib/agenda/repository";
 import { applyConsumptionFromEncounter } from "@/lib/inventory/consumption";
 import { getSites } from "@/lib/agenda/sites";
@@ -20,10 +21,19 @@ const AtencionClinica = () => {
   const [showForm, setShowForm] = useState(false);
 
   const encounters = getEncounters(vertical);
-  const patients = useMemo(
-    () => getPatients().map((p) => ({ id: p.id, name: p.name })),
-    [],
-  );
+  const [patients, setPatients] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    getPatients()
+      .then((data) => setPatients(data.map((p) => ({ id: p.id, name: p.name }))))
+      .catch(() => toast.error("No se pudieron cargar los pacientes."));
+  }, []);
+
+  const patientNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    patients.forEach((p) => map.set(p.id, p.name));
+    return map;
+  }, [patients]);
   const doctors = useMemo(
     () => getDoctors().map((d) => ({ id: d.id, name: d.name })),
     [],
@@ -43,10 +53,10 @@ const AtencionClinica = () => {
     [],
   );
 
-  const handleSave = (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
+  const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
     const encounter = saveEncounter(payload);
     if (payload.status === "COMPLETED" && payload.inventoryUsed?.length) {
-      const patient = getPatientById(encounter.patientId);
+      const patient = await getPatientById(encounter.patientId).catch(() => undefined);
       const doctors = getDoctors();
       const professional = doctors.find((d) => d.id === encounter.professionalId);
       applyConsumptionFromEncounter(vertical, {
@@ -140,12 +150,12 @@ const AtencionClinica = () => {
           ) : (
             <div className="space-y-3">
               {encounters.slice(0, 10).map((enc) => {
-                const patient = getPatientById(enc.patientId);
+                const patientName = patientNameById.get(enc.patientId);
                 return (
                 <div key={enc.id} className="p-4 border border-border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm">
-                      {patient?.name ?? `Paciente #${enc.patientId}`} · {enc.status === "COMPLETED" ? "Finalizada" : "Borrador"}
+                      {patientName ?? `Paciente #${enc.patientId}`} · {enc.status === "COMPLETED" ? "Finalizada" : "Borrador"}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {format(parseISO(enc.startAt), "dd/MM/yyyy HH:mm", { locale: es })}

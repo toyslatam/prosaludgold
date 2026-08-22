@@ -315,6 +315,12 @@ export type Database = {
           next_appointment: string | null
           phone: string | null
           updated_at: string
+          gender: string | null
+          address: string | null
+          benefits: string | null
+          branch: string | null
+          assigned_doctor_id: string | null
+          collaborators: string[]
         }
         Insert: {
           balance?: number
@@ -328,6 +334,12 @@ export type Database = {
           next_appointment?: string | null
           phone?: string | null
           updated_at?: string
+          gender?: string | null
+          address?: string | null
+          benefits?: string | null
+          branch?: string | null
+          assigned_doctor_id?: string | null
+          collaborators?: string[]
         }
         Update: {
           balance?: number
@@ -341,6 +353,12 @@ export type Database = {
           next_appointment?: string | null
           phone?: string | null
           updated_at?: string
+          gender?: string | null
+          address?: string | null
+          benefits?: string | null
+          branch?: string | null
+          assigned_doctor_id?: string | null
+          collaborators?: string[]
         }
         Relationships: []
       }

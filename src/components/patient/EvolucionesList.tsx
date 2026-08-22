@@ -40,11 +40,16 @@ export function EvolucionesList({ patientId, onRefresh }: EvolucionesListProps) 
   const [notes, setNotes] = useState("");
   const [refresh, setRefresh] = useState(0);
 
-  const patient = getPatientById(patientId);
-  const defaultDoctorId = patient?.assignedDoctorId ?? mockDoctors[0]?.id;
+  const [defaultDoctorId, setDefaultDoctorId] = useState<string | undefined>(mockDoctors[0]?.id);
   const procedures = useMemo(() => getProcedures("dental"), []);
 
   const [evoluciones, setEvoluciones] = useState<Evolucion[]>([]);
+
+  useEffect(() => {
+    getPatientById(patientId)
+      .then((patient) => setDefaultDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id))
+      .catch(() => {});
+  }, [patientId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +68,7 @@ export function EvolucionesList({ patientId, onRefresh }: EvolucionesListProps) 
   const handleOpenModal = () => {
     setDate(new Date().toISOString().slice(0, 10));
     setTime(new Date().toTimeString().slice(0, 5));
-    setDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id ?? "");
+    setDoctorId(defaultDoctorId ?? "");
     setProcedureIds([]);
     setNotes("");
     setModalOpen(true);

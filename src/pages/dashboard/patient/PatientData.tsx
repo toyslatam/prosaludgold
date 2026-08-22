@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Patient } from "@/data/mockData";
 import { mockDoctors } from "@/data/mockData";
 import { useOutletContext } from "react-router-dom";
@@ -65,10 +65,21 @@ export default function PatientData() {
     assignedDoctorId: "",
     collaborators: "",
   });
-  const patient = useMemo(
-    () => getPatientById(contextPatient.id) ?? contextPatient,
-    [contextPatient, refresh]
-  );
+  const [patient, setPatient] = useState<Patient>(contextPatient);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPatientById(contextPatient.id)
+      .then((data) => {
+        if (!cancelled && data) setPatient(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los datos del paciente.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contextPatient, refresh]);
 
   const birthDateFormatted = patient.birthDate
     ? format(parseISO(patient.birthDate), "d MMM yyyy", { locale: es })
@@ -97,22 +108,26 @@ export default function PatientData() {
     }
   };
 
-  const handleEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const collaborators = editForm.collaborators
       ? editForm.collaborators.split(",").map((s) => s.trim()).filter(Boolean)
       : undefined;
-    const updated = updatePatient(patient.id, {
-      benefits: editForm.benefits || undefined,
-      branch: editForm.branch || undefined,
-      assignedDoctorId: editForm.assignedDoctorId || undefined,
-      collaborators: collaborators?.length ? collaborators : undefined,
-    });
-    if (updated) {
-      setRefresh((r) => r + 1);
-      toast.success("Datos guardados");
-      setEditOpen(false);
-    } else {
+    try {
+      const updated = await updatePatient(patient.id, {
+        benefits: editForm.benefits || undefined,
+        branch: editForm.branch || undefined,
+        assignedDoctorId: editForm.assignedDoctorId || undefined,
+        collaborators: collaborators?.length ? collaborators : undefined,
+      });
+      if (updated) {
+        setRefresh((r) => r + 1);
+        toast.success("Datos guardados");
+        setEditOpen(false);
+      } else {
+        toast.error("Error al guardar");
+      }
+    } catch {
       toast.error("Error al guardar");
     }
   };

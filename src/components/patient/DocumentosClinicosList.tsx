@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Plus, FileText, Upload } from "lucide-react";
@@ -51,19 +51,24 @@ export function DocumentosClinicosList({ patientId }: DocumentosClinicosListProp
   const [refresh, setRefresh] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const patient = getPatientById(patientId);
-  const defaultDoctorId = patient?.assignedDoctorId ?? mockDoctors[0]?.id;
+  const [defaultDoctorId, setDefaultDoctorId] = useState<string | undefined>(mockDoctors[0]?.id);
   const documents = useMemo(
     () => getClinicalDocumentsByPatient(patientId),
     [patientId, refresh]
   );
+
+  useEffect(() => {
+    getPatientById(patientId)
+      .then((patient) => setDefaultDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id))
+      .catch(() => {});
+  }, [patientId]);
 
   const openFromTemplate = () => {
     setModalMode("template");
     setTypeId("");
     setName("");
     setDate(new Date().toISOString().slice(0, 10));
-    setDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id ?? "");
+    setDoctorId(defaultDoctorId ?? "");
     setStatus("borrador");
     setContent("");
     setModalOpen(true);
@@ -74,7 +79,7 @@ export function DocumentosClinicosList({ patientId }: DocumentosClinicosListProp
     setTypeId("adjunto");
     setName("");
     setDate(new Date().toISOString().slice(0, 10));
-    setDoctorId(patient?.assignedDoctorId ?? mockDoctors[0]?.id ?? "");
+    setDoctorId(defaultDoctorId ?? "");
     setStatus("final");
     setContent("");
     fileInputRef.current?.click();

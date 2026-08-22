@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import { getPatientById } from "@/lib/patients/repository";
+import type { Patient } from "@/data/mockData";
 import { generateClinicalHistoryPdf } from "@/lib/patients/generateClinicalHistoryPdf";
 import { PatientHeader } from "@/components/patient/PatientHeader";
 import { PatientTabs } from "@/components/patient/PatientTabs";
@@ -11,7 +12,33 @@ export default function PatientLayout() {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { basePath: demoBasePath, vertical } = useDemo();
-  const patient = patientId ? getPatientById(patientId) : undefined;
+  const [patient, setPatient] = useState<Patient | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!patientId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getPatientById(patientId)
+      .then((data) => {
+        if (!cancelled) setPatient(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPatient(undefined);
+          toast.error("No se pudo cargar el paciente.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId]);
 
   const basePath = `${demoBasePath}/pacientes/${patientId}`;
   const isDental = vertical === "dental";
@@ -34,6 +61,10 @@ export default function PatientLayout() {
 
   if (!patientId) {
     return <Navigate to={`${demoBasePath}/pacientes`} replace />;
+  }
+
+  if (loading) {
+    return null;
   }
 
   if (!patient) {
