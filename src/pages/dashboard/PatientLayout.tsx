@@ -91,7 +91,7 @@ export default function PatientLayout() {
           onAgendar={handleAgendar}
           onHistoriaClinica={isDental ? handleHistoriaClinica : undefined}
         />
-        <PatientTabs basePath={basePath} isDental={isDental} />
+        <PatientTabs basePath={basePath} isDental={isDental} vertical={vertical} />
       </div>
       <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/20 min-h-0">
         <Outlet context={{ patient }} />

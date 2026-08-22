@@ -5,6 +5,7 @@ import type { Patient } from "@/data/mockData";
 import { getPlansByPatient, addTreatmentPlan } from "@/lib/patients/treatmentPlans";
 import type { TreatmentPlan, PlanFinancialStatus, Prestacion } from "@/lib/patients/treatmentPlans";
 import { getDoctors } from "@/lib/agenda/repository";
+import { getTreatmentPlanLabels } from "@/config/treatmentPlanLabels";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +41,8 @@ const EMPTY_PRESTACION = { name: "", price: "" };
 export default function PatientPlanes() {
   const { patient } = useOutletContext<{ patient: Patient }>();
   const navigate = useNavigate();
-  const { basePath } = useDemo();
+  const { basePath, vertical } = useDemo();
+  const labels = getTreatmentPlanLabels(vertical);
   const [filter, setFilter] = useState<"activos" | "todos">("activos");
   const [refresh, setRefresh] = useState(0);
 
@@ -98,12 +100,12 @@ export default function PatientPlanes() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error("Ingrese un nombre para el plan");
+      toast.error("Ingrese un nombre");
       return;
     }
     const doctor = doctors.find((d) => d.id === professionalId);
     if (!doctor) {
-      toast.error("Seleccione un profesional");
+      toast.error(`Seleccione ${labels.professionalLabel.toLowerCase()}`);
       return;
     }
     const validPrestaciones: Prestacion[] = prestaciones
@@ -115,7 +117,7 @@ export default function PatientPlanes() {
         paid: 0,
       }));
     if (validPrestaciones.length === 0) {
-      toast.error("Agregue al menos una prestación con nombre y precio");
+      toast.error(labels.itemRequiredError);
       return;
     }
     const totalBudget = validPrestaciones.reduce((sum, p) => sum + p.price, 0);
@@ -135,11 +137,11 @@ export default function PatientPlanes() {
         discountPercent: discount,
         prestaciones: validPrestaciones,
       });
-      toast.success("Plan de tratamiento creado");
+      toast.success(labels.createdToast);
       setModalOpen(false);
       setRefresh((r) => r + 1);
     } catch {
-      toast.error("No se pudo crear el plan de tratamiento.");
+      toast.error(labels.createErrorToast);
     } finally {
       setSaving(false);
     }
@@ -149,20 +151,20 @@ export default function PatientPlanes() {
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold">Planes de tratamiento</h2>
+          <h2 className="text-lg font-semibold">{labels.sectionTitle}</h2>
           <Select value={filter} onValueChange={(v) => setFilter(v as "activos" | "todos")}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="activos">Tratamientos activos</SelectItem>
+              <SelectItem value="activos">Activos</SelectItem>
               <SelectItem value="todos">Todos</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={openCreate}>
           <Plus className="h-4 w-4" />
-          Nuevo plan de tratamiento
+          {labels.newButtonLabel}
         </Button>
       </div>
 
@@ -170,8 +172,8 @@ export default function PatientPlanes() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             {filter === "activos"
-              ? "No hay planes de tratamiento activos"
-              : "No hay planes de tratamiento para este paciente"}
+              ? `No hay ${labels.sectionTitle.toLowerCase()} activos`
+              : `No hay ${labels.sectionTitle.toLowerCase()} para este paciente`}
           </CardContent>
         </Card>
       ) : (
@@ -189,20 +191,20 @@ export default function PatientPlanes() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nuevo plan de tratamiento</DialogTitle>
+            <DialogTitle>{labels.newDialogTitle}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label>Nombre del plan</Label>
+              <Label>Nombre</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Tratamiento de conducto #36"
+                placeholder={labels.namePlaceholder}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Profesional a cargo</Label>
+                <Label>{labels.professionalLabel}</Label>
                 <Select value={professionalId} onValueChange={setProfessionalId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar" />
@@ -228,11 +230,11 @@ export default function PatientPlanes() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Prestaciones</Label>
+              <Label>{labels.itemsLabel}</Label>
               {prestaciones.map((p, i) => (
                 <div key={i} className="grid grid-cols-[1fr_140px_auto] gap-2 items-center">
                   <Input
-                    placeholder="Nombre de la prestación"
+                    placeholder={labels.itemNamePlaceholder}
                     value={p.name}
                     onChange={(e) => updatePrestacion(i, "name", e.target.value)}
                   />
@@ -249,7 +251,7 @@ export default function PatientPlanes() {
                 </div>
               ))}
               <Button type="button" variant="outline" size="sm" onClick={addPrestacion}>
-                + Añadir prestación
+                {labels.addItemLabel}
               </Button>
             </div>
             <div className="flex justify-end gap-2">
@@ -257,7 +259,7 @@ export default function PatientPlanes() {
                 Cancelar
               </Button>
               <Button onClick={handleCreate} disabled={saving}>
-                {saving ? "Creando…" : "Crear plan"}
+                {saving ? "Creando…" : "Crear"}
               </Button>
             </div>
           </div>

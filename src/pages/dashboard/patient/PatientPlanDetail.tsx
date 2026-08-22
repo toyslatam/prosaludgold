@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
 import { getPlanById, type TreatmentPlan } from "@/lib/patients/treatmentPlans";
+import { getTreatmentPlanLabels } from "@/config/treatmentPlanLabels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +23,9 @@ export default function PatientPlanDetail() {
   const { patient } = useOutletContext<{ patient: Patient }>();
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
-  const { basePath } = useDemo();
+  const { basePath, vertical } = useDemo();
+  const labels = getTreatmentPlanLabels(vertical);
+  const isDental = vertical === "dental";
 
   const [plan, setPlan] = useState<TreatmentPlan | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -82,7 +85,7 @@ export default function PatientPlanDetail() {
         {/* Columna izquierda: resumen financiero */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">
-            Plan de tratamiento #{plan.number}
+            {labels.detailTitlePrefix} #{plan.number}
           </h2>
           <Card>
             <CardHeader>
@@ -113,7 +116,7 @@ export default function PatientPlanDetail() {
                 <p className="text-xs text-muted-foreground pt-1">No hay abonos</p>
               )}
               <div className="pt-2 border-t space-y-1">
-                <p className="text-muted-foreground text-xs">Profesional a cargo</p>
+                <p className="text-muted-foreground text-xs">{labels.professionalLabel}</p>
                 <p className="font-medium">{plan.professionalName}</p>
               </div>
               {plan.collaborators.length > 0 && (
@@ -158,47 +161,51 @@ export default function PatientPlanDetail() {
 
         {/* Columna derecha: tabs y tabla prestaciones */}
         <div className="space-y-4">
-          <Tabs defaultValue="ortodoncia" className="w-full">
-            <TabsList>
-              <TabsTrigger value="ortodoncia">Ortodoncia</TabsTrigger>
-              <TabsTrigger value="odontograma">Odontograma</TabsTrigger>
-              <TabsTrigger value="estetica">Estética facial</TabsTrigger>
-            </TabsList>
-            <TabsContent value="ortodoncia" className="mt-4 space-y-4">
-              <Tabs defaultValue="resumen" className="w-full">
-                <TabsList className="h-9">
-                  <TabsTrigger value="resumen">Resumen</TabsTrigger>
-                  <TabsTrigger value="plantilla">Plantilla fotográfica</TabsTrigger>
-                  <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
-                  <TabsTrigger value="plan">Plan de tratamiento</TabsTrigger>
-                  <TabsTrigger value="rx">Rx y Cf</TabsTrigger>
-                </TabsList>
-                <TabsContent value="resumen" className="mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Contenido del plan: {plan.name}
-                  </p>
-                </TabsContent>
-                <TabsContent value="plantilla" className="mt-4">
-                  <p className="text-sm text-muted-foreground">Plantilla fotográfica (próximamente)</p>
-                </TabsContent>
-                <TabsContent value="diagnostico" className="mt-4">
-                  <p className="text-sm text-muted-foreground">Diagnóstico (próximamente)</p>
-                </TabsContent>
-                <TabsContent value="plan" className="mt-4">
-                  <p className="text-sm text-muted-foreground">Plan de tratamiento (próximamente)</p>
-                </TabsContent>
-                <TabsContent value="rx" className="mt-4">
-                  <p className="text-sm text-muted-foreground">Rx y Cf (próximamente)</p>
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-            <TabsContent value="odontograma" className="mt-4">
-              <p className="text-sm text-muted-foreground">Odontograma (Fase 4)</p>
-            </TabsContent>
-            <TabsContent value="estetica" className="mt-4">
-              <p className="text-sm text-muted-foreground">Estética facial (próximamente)</p>
-            </TabsContent>
-          </Tabs>
+          {isDental ? (
+            <Tabs defaultValue="ortodoncia" className="w-full">
+              <TabsList>
+                <TabsTrigger value="ortodoncia">Ortodoncia</TabsTrigger>
+                <TabsTrigger value="odontograma">Odontograma</TabsTrigger>
+                <TabsTrigger value="estetica">Estética facial</TabsTrigger>
+              </TabsList>
+              <TabsContent value="ortodoncia" className="mt-4 space-y-4">
+                <Tabs defaultValue="resumen" className="w-full">
+                  <TabsList className="h-9">
+                    <TabsTrigger value="resumen">Resumen</TabsTrigger>
+                    <TabsTrigger value="plantilla">Plantilla fotográfica</TabsTrigger>
+                    <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
+                    <TabsTrigger value="plan">Plan de tratamiento</TabsTrigger>
+                    <TabsTrigger value="rx">Rx y Cf</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="resumen" className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Contenido del plan: {plan.name}
+                    </p>
+                  </TabsContent>
+                  <TabsContent value="plantilla" className="mt-4">
+                    <p className="text-sm text-muted-foreground">Plantilla fotográfica (próximamente)</p>
+                  </TabsContent>
+                  <TabsContent value="diagnostico" className="mt-4">
+                    <p className="text-sm text-muted-foreground">Diagnóstico (próximamente)</p>
+                  </TabsContent>
+                  <TabsContent value="plan" className="mt-4">
+                    <p className="text-sm text-muted-foreground">Plan de tratamiento (próximamente)</p>
+                  </TabsContent>
+                  <TabsContent value="rx" className="mt-4">
+                    <p className="text-sm text-muted-foreground">Rx y Cf (próximamente)</p>
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+              <TabsContent value="odontograma" className="mt-4">
+                <p className="text-sm text-muted-foreground">Odontograma (Fase 4)</p>
+              </TabsContent>
+              <TabsContent value="estetica" className="mt-4">
+                <p className="text-sm text-muted-foreground">Estética facial (próximamente)</p>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <p className="text-sm text-muted-foreground">{plan.name}</p>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className="gap-1">
@@ -215,7 +222,7 @@ export default function PatientPlanDetail() {
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="text-base">Prestaciones</CardTitle>
+                <CardTitle className="text-base">{labels.itemsLabel}</CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="gap-1">
                     <Plus className="h-4 w-4" />
@@ -223,7 +230,7 @@ export default function PatientPlanDetail() {
                   </Button>
                   <Button variant="outline" size="sm" className="gap-1">
                     <Plus className="h-4 w-4" />
-                    Prestación
+                    {labels.itemLabelSingular}
                   </Button>
                   <Button variant="outline" size="sm">Acciones</Button>
                 </div>
@@ -233,7 +240,7 @@ export default function PatientPlanDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>PRESTACIÓN</TableHead>
+                    <TableHead>{labels.itemsLabel.toUpperCase()}</TableHead>
                     <TableHead>DSCTO</TableHead>
                     <TableHead>PRECIO</TableHead>
                     <TableHead>PAGO</TableHead>

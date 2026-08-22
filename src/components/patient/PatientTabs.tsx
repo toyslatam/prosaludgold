@@ -1,21 +1,23 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-const allTabs = [
-  { to: "datos", label: "Datos personales", dentalOnly: false },
-  { to: "ficha", label: "Ficha clínica", dentalOnly: true },
-  { to: "planes", label: "Planes de tratamiento", dentalOnly: false },
-  { to: "facturacion", label: "Facturación y pagos", dentalOnly: false },
-  { to: "recibir-pago", label: "Recibir pago", dentalOnly: false },
-] as const;
+import { getTreatmentPlanLabels } from "@/config/treatmentPlanLabels";
 
 interface PatientTabsProps {
   basePath: string;
   isDental?: boolean;
+  vertical?: string;
   className?: string;
 }
 
-export function PatientTabs({ basePath, isDental = true, className }: PatientTabsProps) {
+export function PatientTabs({ basePath, isDental = true, vertical = "dental", className }: PatientTabsProps) {
+  const planLabels = getTreatmentPlanLabels(vertical);
+  const allTabs = [
+    { to: "datos", label: "Datos personales", dentalOnly: false },
+    { to: "ficha", label: "Ficha clínica", dentalOnly: true },
+    { to: "planes", label: planLabels.tabLabel, dentalOnly: false },
+    { to: "facturacion", label: "Facturación y pagos", dentalOnly: false },
+    { to: "recibir-pago", label: "Recibir pago", dentalOnly: false },
+  ] as const;
   const tabs = isDental ? allTabs : allTabs.filter((t) => !t.dentalOnly);
   return (
     <nav
