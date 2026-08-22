@@ -44,7 +44,8 @@ Siempre responde con un JSON con esta estructura exacta:
 }
 
 Cuando el onboarding esté completo (name + modules + al menos 1 sede), pon "done": true y un mensaje de bienvenida entusiasta.
-Solo incluye en "extracted" los campos que el usuario mencionó en ESTE mensaje. No repitas campos ya guardados.`;
+Solo incluye en "extracted" los campos que el usuario mencionó en ESTE mensaje. No repitas campos ya guardados.
+IMPORTANTE: nunca incluyas un campo en "extracted" con un valor vacío (ej. "modules_enabled": [] o "sedes": []) solo para rellenar el JSON. Si el usuario no mencionó ese dato en este mensaje, OMITE la clave por completo — cada campo que envíes reemplaza lo que ya se había guardado, así que un arreglo vacío borraría una selección válida anterior (ej. borraría "spa" si ya lo habían elegido).`;
 
 interface ChatMessage {
   role: "user" | "assistant";

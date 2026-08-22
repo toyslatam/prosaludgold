@@ -155,7 +155,8 @@ export function useOnboardingAgent() {
       const scalarKeys: (keyof ClinicConfig)[] = ["name", "ruc", "address", "phone", "email", "country", "currency", "modules_enabled"];
       for (const k of scalarKeys) {
         const val = ext[k as keyof typeof ext];
-        if (val !== undefined && val !== null && val !== "") {
+        const isEmptyArray = Array.isArray(val) && val.length === 0;
+        if (val !== undefined && val !== null && val !== "" && !isEmptyArray) {
           (next.config as Record<string, unknown>)[k] = val;
         }
       }
