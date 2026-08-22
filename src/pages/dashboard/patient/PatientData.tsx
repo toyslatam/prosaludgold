@@ -25,9 +25,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getPatientById, updatePatient } from "@/lib/patients/repository";
 import { getClinicalEventsByPatient, type ClinicalEvent } from "@/lib/patients/clinicalHistory";
-
-const BENEFITS_OPTIONS = ["Convenio oro", "Seguro dental", "Particular", "Otro"];
-const BRANCH_OPTIONS = ["Sede Central", "Sede Norte", "Sede Sur"];
+import { BENEFITS_OPTIONS, BRANCH_OPTIONS } from "@/config/patientOptions";
 
 function getEventTypeLabel(e: ClinicalEvent): string {
   switch (e.type) {

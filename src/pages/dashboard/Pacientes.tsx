@@ -6,14 +6,36 @@ import { usePatients, useInsertPatient } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, Plus, Eye, Phone, Mail, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { mockDoctors } from "@/data/mockData";
+import { BENEFITS_OPTIONS, BRANCH_OPTIONS } from "@/config/patientOptions";
+
+const EMPTY_FORM = {
+  name: "",
+  cedula: "",
+  phone: "",
+  email: "",
+  birth_date: "",
+  address: "",
+  benefits: "",
+  branch: "",
+  assigned_doctor_id: "",
+  collaborators: "",
+};
 
 const Pacientes = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", cedula: "", phone: "", email: "", birth_date: "" });
+  const [form, setForm] = useState(EMPTY_FORM);
   const navigate = useNavigate();
   const { basePath, vertical } = useDemo();
   const { enabledModules } = useAppConfig();
@@ -30,6 +52,9 @@ const Pacientes = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
+    const collaborators = form.collaborators
+      ? form.collaborators.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
     insert.mutate(
       {
         name: form.name.trim(),
@@ -37,12 +62,17 @@ const Pacientes = () => {
         phone: form.phone || null,
         email: form.email || null,
         birth_date: form.birth_date || null,
+        address: form.address || null,
+        benefits: form.benefits || null,
+        branch: form.branch || null,
+        assigned_doctor_id: form.assigned_doctor_id || null,
+        collaborators,
         modules_enabled: vertical === "multi" ? enabledModules : [vertical],
       },
       {
         onSuccess: () => {
           toast.success("Paciente registrado correctamente");
-          setForm({ name: "", cedula: "", phone: "", email: "", birth_date: "" });
+          setForm(EMPTY_FORM);
           setOpen(false);
         },
         onError: (err) => toast.error(`Error al registrar: ${err.message}`),
@@ -64,7 +94,7 @@ const Pacientes = () => {
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="w-4 h-4" /> Nuevo paciente</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Registrar paciente</DialogTitle></DialogHeader>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-1.5">
@@ -76,38 +106,112 @@ const Pacientes = () => {
                   required
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Cédula</Label>
-                <Input
-                  placeholder="Cédula"
-                  value={form.cedula}
-                  onChange={(e) => setForm((f) => ({ ...f, cedula: e.target.value }))}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Cédula</Label>
+                  <Input
+                    placeholder="Cédula"
+                    value={form.cedula}
+                    onChange={(e) => setForm((f) => ({ ...f, cedula: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Fecha de nacimiento</Label>
+                  <Input
+                    type="date"
+                    value={form.birth_date}
+                    onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Teléfono</Label>
+                  <Input
+                    placeholder="Teléfono"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Teléfono</Label>
+                <Label>Dirección</Label>
                 <Input
-                  placeholder="Teléfono"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="Opcional"
+                  value={form.address}
+                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input
-                  placeholder="Email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Convenio / Beneficio</Label>
+                  <Select
+                    value={form.benefits}
+                    onValueChange={(v) => setForm((f) => ({ ...f, benefits: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BENEFITS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sede / Sucursal</Label>
+                  <Select
+                    value={form.branch}
+                    onValueChange={(v) => setForm((f) => ({ ...f, branch: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCH_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha de nacimiento</Label>
+                <Label>Profesional a cargo</Label>
+                <Select
+                  value={form.assigned_doctor_id}
+                  onValueChange={(v) => setForm((f) => ({ ...f, assigned_doctor_id: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockDoctors.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Colaboradores (separados por coma)</Label>
                 <Input
-                  type="date"
-                  value={form.birth_date}
-                  onChange={(e) => setForm((f) => ({ ...f, birth_date: e.target.value }))}
+                  value={form.collaborators}
+                  onChange={(e) => setForm((f) => ({ ...f, collaborators: e.target.value }))}
+                  placeholder="Ej: Dr. X, Dra. Y"
                 />
               </div>
               <Button type="submit" className="w-full" disabled={insert.isPending}>
