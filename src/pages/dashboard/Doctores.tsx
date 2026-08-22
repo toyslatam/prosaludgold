@@ -31,7 +31,10 @@ const EMPTY_FORM: DoctorForm = { name: "", specialty: "", branch: "", available:
 
 const Doctores = () => {
   const { vertical } = useDemo();
-  const { enabledModules } = useAppConfig();
+  const { enabledModules, sedes } = useAppConfig();
+  const activeSedes = sedes.filter(
+    (s) => s.active && (vertical === "multi" || !s.modules_enabled?.length || s.modules_enabled.includes(vertical))
+  );
   const [search, setSearch] = useState("");
   const [filterAvailable, setFilterAvailable] = useState<"all" | "active" | "inactive">("all");
   const [openNew, setOpenNew] = useState(false);
@@ -173,7 +176,24 @@ const Doctores = () => {
               </div>
               <div className="space-y-1.5">
                 <Label>Sede / Sucursal</Label>
-                <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} placeholder="Principal" />
+                {activeSedes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">
+                    No hay sedes registradas. Agrega una en Configuración.
+                  </p>
+                ) : (
+                  <Select value={form.branch} onValueChange={(v) => setForm((f) => ({ ...f, branch: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeSedes.map((s) => (
+                        <SelectItem key={s.id} value={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Módulos en los que atiende</Label>
@@ -304,7 +324,24 @@ const Doctores = () => {
             </div>
             <div className="space-y-1.5">
               <Label>Sede / Sucursal</Label>
-              <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} />
+              {activeSedes.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  No hay sedes registradas. Agrega una en Configuración.
+                </p>
+              ) : (
+                <Select value={form.branch} onValueChange={(v) => setForm((f) => ({ ...f, branch: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeSedes.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Módulos en los que atiende</Label>
