@@ -28,7 +28,7 @@ const spa: EncounterFormConfig = {
   proceduresLabel: "Servicios",
   proceduresAddLabel: "Agregar servicio",
   notesLabel: "Notas de sesión",
-  showCabin: true,
+  locationLabel: "Cabina / Sala",
 };
 
 const configs: Record<Exclude<VerticalKey, "multi">, EncounterFormConfig> = {

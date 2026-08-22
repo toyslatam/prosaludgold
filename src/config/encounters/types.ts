@@ -23,6 +23,6 @@ export interface EncounterFormConfig {
   showVitals?: boolean;
   /** Mostrar sección Receta (medical) */
   showPrescription?: boolean;
-  /** Mostrar cabina/ubicación (spa) */
-  showCabin?: boolean;
+  /** Label del campo de ubicación/sala (ej. "Ubicación" | "Cabina / Sala") */
+  locationLabel?: string;
 }

@@ -26,7 +26,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, ChevronsUpDown, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { VerticalKey } from "@/config/demos";
@@ -40,8 +40,6 @@ import type {
   MedicalVerticalData,
 } from "@/types/careEncounter";
 import { getProcedures, getProcedureById } from "@/lib/agenda/procedures";
-import { getSites } from "@/lib/agenda/sites";
-import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
 import { getInventoryItems } from "@/lib/inventory/items";
 import { PrescriptionSection } from "./PrescriptionSection";
 
@@ -56,6 +54,7 @@ interface CareEncounterFormProps {
   doctors: DoctorOption[];
   sites: { id: string; name: string }[];
   locations: { id: string; name: string; siteName: string; type: string }[];
+  onManageLocations?: () => void;
   onSave: (payload: CareEncounterPayload) => void;
   onCancel: () => void;
 }
@@ -73,6 +72,7 @@ export function CareEncounterForm({
   doctors,
   sites,
   locations,
+  onManageLocations,
   onSave,
   onCancel,
 }: CareEncounterFormProps) {
@@ -295,13 +295,27 @@ export function CareEncounterForm({
               />
             </div>
           </div>
-          {sites.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Sede y {(config.locationLabel ?? "Ubicación").toLowerCase()}</Label>
+              {onManageLocations && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  onClick={onManageLocations}
+                >
+                  <Settings className="w-3 h-3" /> Gestionar
+                </Button>
+              )}
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Sede</Label>
+                <Label className="text-xs text-muted-foreground">Sede</Label>
                 <Select value={siteId} onValueChange={setSiteId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Opcional" />
+                    <SelectValue placeholder={sites.length ? "Opcional" : "No hay sedes registradas"} />
                   </SelectTrigger>
                   <SelectContent>
                     {sites.map((s) => (
@@ -313,10 +327,10 @@ export function CareEncounterForm({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Ubicación</Label>
+                <Label className="text-xs text-muted-foreground">{config.locationLabel ?? "Ubicación"}</Label>
                 <Select value={locationId} onValueChange={setLocationId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Opcional" />
+                    <SelectValue placeholder={locations.length ? "Opcional" : "No hay ubicaciones registradas"} />
                   </SelectTrigger>
                   <SelectContent>
                     {locations.map((l) => (
@@ -328,7 +342,7 @@ export function CareEncounterForm({
                 </Select>
               </div>
             </div>
-          )}
+          </div>
 
           {config.showReasonForVisit && (
             <div className="space-y-2">
@@ -439,39 +453,6 @@ export function CareEncounterForm({
             </div>
           )}
 
-          {config.showCabin && (
-            <div className="space-y-2">
-              <Label>Cabina / Sala</Label>
-              <Select
-                value={verticalData.spa?.cabinLocationId ?? ""}
-                onValueChange={(v) =>
-                  setVerticalData((prev) => ({
-                    ...prev,
-                    spa: { ...prev.spa, cabinLocationId: v },
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccione cabina" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.filter((l) => l.type.toLowerCase().includes("salón") || l.type.toLowerCase().includes("cabina")).length > 0
-                    ? locations
-                        .filter((l) => l.type.toLowerCase().includes("salón") || l.type.toLowerCase().includes("cabina"))
-                        .map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.name} · {l.siteName}
-                          </SelectItem>
-                        ))
-                    : locations.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name} · {l.siteName}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </CardContent>
       </Card>
 

@@ -9,6 +9,7 @@ import { applyConsumptionFromEncounter } from "@/lib/inventory/consumption";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
+import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
@@ -42,6 +43,8 @@ const AtencionClinica = () => {
 
   const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
   const [locations, setLocations] = useState<LocationWithSiteName[]>([]);
+  const [locationManagerOpen, setLocationManagerOpen] = useState(false);
+  const [locationsRefresh, setLocationsRefresh] = useState(0);
 
   useEffect(() => {
     getSites(vertical)
@@ -50,7 +53,7 @@ const AtencionClinica = () => {
     getLocationsWithSiteNames({ includeInactive: false }, vertical)
       .then(setLocations)
       .catch(() => toast.error("No se pudieron cargar las ubicaciones."));
-  }, [vertical]);
+  }, [vertical, locationsRefresh]);
 
   const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
     const encounter = saveEncounter(payload);
@@ -79,8 +82,16 @@ const AtencionClinica = () => {
           doctors={doctors}
           sites={sites}
           locations={locations}
+          onManageLocations={() => setLocationManagerOpen(true)}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}
+        />
+        <LocationManagerModal
+          open={locationManagerOpen}
+          onOpenChange={setLocationManagerOpen}
+          locations={locations}
+          onLocationsChange={() => setLocationsRefresh((r) => r + 1)}
+          appointmentCountByLocationId={() => 0}
         />
       </div>
     );
