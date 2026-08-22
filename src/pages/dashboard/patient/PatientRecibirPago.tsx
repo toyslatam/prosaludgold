@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
+import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
 import {
   getPlansWithBalanceByPatient,
   applyPaymentToPlan,
   type TreatmentPlan,
 } from "@/lib/patients/treatmentPlans";
+import { getTreatmentPlanLabels } from "@/config/treatmentPlanLabels";
 import { addPayment } from "@/lib/patients/payments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,8 @@ function buildMockCuotas(plans: TreatmentPlan[]): MockCuota[] {
 
 export default function PatientRecibirPago() {
   const { patient } = useOutletContext<{ patient: Patient }>();
+  const { vertical } = useDemo();
+  const labels = getTreatmentPlanLabels(vertical);
   const [refresh, setRefresh] = useState(0);
   const [payPlanOpen, setPayPlanOpen] = useState(false);
   const [payCuotaOpen, setPayCuotaOpen] = useState(false);
@@ -105,7 +109,7 @@ export default function PatientRecibirPago() {
         method: "Efectivo (mock)",
         reference: `PLAN-${selectedPlanId}`,
         status: "completado",
-        description: "Abono a plan de tratamiento",
+        description: `Abono a ${labels.detailTitlePrefix.toLowerCase()}`,
       });
       toast.success(`Pago de $${num.toLocaleString()} registrado`);
       setPayPlanOpen(false);
@@ -159,13 +163,13 @@ export default function PatientRecibirPago() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Planes de tratamiento</CardTitle>
+          <CardTitle className="text-base">{labels.sectionTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Presupuestos</TableHead>
+                <TableHead>{labels.detailTitlePrefix}</TableHead>
                 <TableHead>Total presupuesto</TableHead>
                 <TableHead>Realizado</TableHead>
                 <TableHead>Pagado</TableHead>
@@ -177,7 +181,7 @@ export default function PatientRecibirPago() {
               {plansWithBalance.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-8">
-                    No hay planes con saldo pendiente
+                    No hay {labels.sectionTitle.toLowerCase()} con saldo pendiente
                   </TableCell>
                 </TableRow>
               ) : (
@@ -211,7 +215,7 @@ export default function PatientRecibirPago() {
               plansWithBalance.length > 0 && handleOpenPayPlan(plansWithBalance[0].id)
             }
           >
-            Pagar tratamiento(s)
+            Pagar {labels.detailTitlePrefix.toLowerCase()}(s)
           </Button>
         </CardContent>
       </Card>
@@ -241,7 +245,7 @@ export default function PatientRecibirPago() {
               ) : (
                 cuotas.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>Plan #{c.planNumber}</TableCell>
+                    <TableCell>{labels.detailTitlePrefix} #{c.planNumber}</TableCell>
                     <TableCell>${c.monto.toLocaleString()}</TableCell>
                     <TableCell>${c.pagado.toLocaleString()}</TableCell>
                     <TableCell>${(c.monto - c.pagado).toLocaleString()}</TableCell>
@@ -277,7 +281,7 @@ export default function PatientRecibirPago() {
       <Dialog open={payPlanOpen} onOpenChange={setPayPlanOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Pagar tratamiento</DialogTitle>
+            <DialogTitle>Pagar {labels.detailTitlePrefix.toLowerCase()}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
