@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useInventoryItems, useInsertInventoryItem, useUpdateInventoryItem } from "@/hooks/useSupabase";
+import { useDemo } from "@/contexts/DemoContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, AlertTriangle, Search, Package, Loader2, Pencil } from "lucide-react";
+import { Plus, AlertTriangle, Search, Package, Loader2, Pencil, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { getLookups, type LookupKind } from "@/lib/inventory/lookups";
+import { LookupManagerModal } from "@/components/inventory/LookupManagerModal";
 
 type ItemForm = {
   name: string;
@@ -20,7 +23,53 @@ const EMPTY: ItemForm = { name: "", category: "", unit: "unidad", stock: "0", mi
 
 type StockForm = { delta: string; type: "entrada" | "salida" };
 
+function LookupField({
+  label,
+  value,
+  onChange,
+  options,
+  onManage,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { id: string; name: string }[];
+  onManage: () => void;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label>{label}{required ? " *" : ""}</Label>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+          onClick={onManage}
+        >
+          <Settings className="w-3 h-3" /> Gestionar
+        </Button>
+      </div>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={options.length ? "Seleccionar" : "No hay opciones registradas"} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.id} value={o.name}>
+              {o.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 const Inventario = () => {
+  const { vertical } = useDemo();
   const [search, setSearch] = useState("");
   const [filterAlert, setFilterAlert] = useState(false);
   const [openNew, setOpenNew] = useState(false);
@@ -32,6 +81,12 @@ const Inventario = () => {
   const { data: items = [], isLoading } = useInventoryItems();
   const insertItem = useInsertInventoryItem();
   const updateItem = useUpdateInventoryItem();
+
+  const [lookupsRefresh, setLookupsRefresh] = useState(0);
+  const [managingLookup, setManagingLookup] = useState<LookupKind | null>(null);
+  const categories = useMemo(() => getLookups(vertical, "category"), [vertical, lookupsRefresh]);
+  const units = useMemo(() => getLookups(vertical, "unit"), [vertical, lookupsRefresh]);
+  const suppliers = useMemo(() => getLookups(vertical, "supplier"), [vertical, lookupsRefresh]);
 
   const filtered = items.filter((i) => {
     const matchSearch =
@@ -125,13 +180,22 @@ const Inventario = () => {
               <div className="space-y-1.5"><Label>Nombre *</Label>
                 <Input value={itemForm.name} onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))} required />
               </div>
-              <div className="space-y-1.5"><Label>Categoría *</Label>
-                <Input value={itemForm.category} onChange={(e) => setItemForm((f) => ({ ...f, category: e.target.value }))} required />
-              </div>
+              <LookupField
+                label="Categoría"
+                required
+                value={itemForm.category}
+                onChange={(v) => setItemForm((f) => ({ ...f, category: v }))}
+                options={categories}
+                onManage={() => setManagingLookup("category")}
+              />
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Unidad</Label>
-                  <Input value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))} placeholder="unidad" />
-                </div>
+                <LookupField
+                  label="Unidad"
+                  value={itemForm.unit}
+                  onChange={(v) => setItemForm((f) => ({ ...f, unit: v }))}
+                  options={units}
+                  onManage={() => setManagingLookup("unit")}
+                />
                 <div className="space-y-1.5"><Label>Stock inicial</Label>
                   <Input type="number" min="0" value={itemForm.stock} onChange={(e) => setItemForm((f) => ({ ...f, stock: e.target.value }))} />
                 </div>
@@ -140,9 +204,13 @@ const Inventario = () => {
                 <div className="space-y-1.5"><Label>Stock mínimo</Label>
                   <Input type="number" min="0" value={itemForm.min_stock} onChange={(e) => setItemForm((f) => ({ ...f, min_stock: e.target.value }))} />
                 </div>
-                <div className="space-y-1.5"><Label>Proveedor</Label>
-                  <Input value={itemForm.supplier} onChange={(e) => setItemForm((f) => ({ ...f, supplier: e.target.value }))} />
-                </div>
+                <LookupField
+                  label="Proveedor"
+                  value={itemForm.supplier}
+                  onChange={(v) => setItemForm((f) => ({ ...f, supplier: v }))}
+                  options={suppliers}
+                  onManage={() => setManagingLookup("supplier")}
+                />
               </div>
               <Button type="submit" className="w-full" disabled={isPending}>
                 {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Agregar"}
@@ -236,20 +304,33 @@ const Inventario = () => {
             <div className="space-y-1.5"><Label>Nombre *</Label>
               <Input value={itemForm.name} onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))} required />
             </div>
-            <div className="space-y-1.5"><Label>Categoría *</Label>
-              <Input value={itemForm.category} onChange={(e) => setItemForm((f) => ({ ...f, category: e.target.value }))} required />
-            </div>
+            <LookupField
+              label="Categoría"
+              required
+              value={itemForm.category}
+              onChange={(v) => setItemForm((f) => ({ ...f, category: v }))}
+              options={categories}
+              onManage={() => setManagingLookup("category")}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Unidad</Label>
-                <Input value={itemForm.unit} onChange={(e) => setItemForm((f) => ({ ...f, unit: e.target.value }))} />
-              </div>
+              <LookupField
+                label="Unidad"
+                value={itemForm.unit}
+                onChange={(v) => setItemForm((f) => ({ ...f, unit: v }))}
+                options={units}
+                onManage={() => setManagingLookup("unit")}
+              />
               <div className="space-y-1.5"><Label>Stock mínimo</Label>
                 <Input type="number" min="0" value={itemForm.min_stock} onChange={(e) => setItemForm((f) => ({ ...f, min_stock: e.target.value }))} />
               </div>
             </div>
-            <div className="space-y-1.5"><Label>Proveedor</Label>
-              <Input value={itemForm.supplier} onChange={(e) => setItemForm((f) => ({ ...f, supplier: e.target.value }))} />
-            </div>
+            <LookupField
+              label="Proveedor"
+              value={itemForm.supplier}
+              onChange={(v) => setItemForm((f) => ({ ...f, supplier: v }))}
+              options={suppliers}
+              onManage={() => setManagingLookup("supplier")}
+            />
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Guardar cambios"}
             </Button>
@@ -298,6 +379,16 @@ const Inventario = () => {
           })()}
         </DialogContent>
       </Dialog>
+
+      {managingLookup && (
+        <LookupManagerModal
+          open={!!managingLookup}
+          onOpenChange={(o) => !o && setManagingLookup(null)}
+          vertical={vertical}
+          kind={managingLookup}
+          onChanged={() => setLookupsRefresh((r) => r + 1)}
+        />
+      )}
     </div>
   );
 };
