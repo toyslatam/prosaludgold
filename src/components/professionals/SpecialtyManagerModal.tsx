@@ -9,6 +9,7 @@ import {
 } from "@/lib/professionals/specialties";
 import { getProfessionals } from "@/lib/professionals/repository";
 import type { Specialty } from "@/types/professionals";
+type CountUsageFn = (specialty: Specialty) => number;
 import type { VerticalKey } from "@/config/demos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,8 @@ export interface SpecialtyManagerModalProps {
   onOpenChange: (open: boolean) => void;
   vertical: VerticalKey;
   onChanged?: () => void;
+  /** Cuenta profesionales usando una especialidad; por defecto usa el módulo local (legacy) de profesionales. */
+  countUsage?: CountUsageFn;
 }
 
 function countProfessionalsBySpecialty(vertical: VerticalKey, specialtyId: string): number {
@@ -49,6 +52,7 @@ export function SpecialtyManagerModal({
   onOpenChange,
   vertical,
   onChanged,
+  countUsage,
 }: SpecialtyManagerModalProps) {
   const [search, setSearch] = useState("");
   const [newName, setNewName] = useState("");
@@ -132,7 +136,10 @@ export function SpecialtyManagerModal({
 
   const confirmDelete = () => {
     if (!deletingId) return;
-    const count = countProfessionalsBySpecialty(vertical, deletingId);
+    const deletingSpecialty = specialties.find((s) => s.id === deletingId);
+    const count = countUsage && deletingSpecialty
+      ? countUsage(deletingSpecialty)
+      : countProfessionalsBySpecialty(vertical, deletingId);
     if (count > 0) {
       toast.error("Hay profesionales con esta especialidad. Archívela en lugar de eliminar.");
       setDeletingId(null);
@@ -146,7 +153,7 @@ export function SpecialtyManagerModal({
 
   const deletingSpec = deletingId ? specialties.find((s) => s.id === deletingId) : null;
   const professionalsUsing = deletingSpec
-    ? countProfessionalsBySpecialty(vertical, deletingSpec.id)
+    ? (countUsage ? countUsage(deletingSpec) : countProfessionalsBySpecialty(vertical, deletingSpec.id))
     : 0;
 
   return (

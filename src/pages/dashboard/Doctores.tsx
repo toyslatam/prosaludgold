@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDoctors, useInsertDoctor, useUpdateDoctor } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Stethoscope, Plus, Pencil, Loader2, Search } from "lucide-react";
+import { Stethoscope, Plus, Pencil, Loader2, Search, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useDemo } from "@/contexts/DemoContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import type { VerticalKey } from "@/config/demos";
+import { getSpecialties } from "@/lib/professionals/specialties";
+import { SpecialtyManagerModal } from "@/components/professionals/SpecialtyManagerModal";
 
 const MODULE_LABELS: Record<string, string> = {
   dental: "Odontología",
@@ -42,6 +44,14 @@ const Doctores = () => {
   const { data: doctors = [], isLoading } = useDoctors(vertical);
   const insert = useInsertDoctor();
   const update = useUpdateDoctor();
+
+  const specialtyVertical = (vertical === "multi" ? "dental" : vertical) as Exclude<VerticalKey, "multi">;
+  const [specialtiesRefresh, setSpecialtiesRefresh] = useState(0);
+  const [specialtyManagerOpen, setSpecialtyManagerOpen] = useState(false);
+  const specialties = useMemo(
+    () => getSpecialties(specialtyVertical),
+    [specialtyVertical, specialtiesRefresh]
+  );
 
   const toggleFormModule = (key: VerticalKey) => {
     setFormModules((prev) => {
@@ -136,8 +146,30 @@ const Doctores = () => {
                 <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Dr. Juan Pérez" required />
               </div>
               <div className="space-y-1.5">
-                <Label>Especialidad *</Label>
-                <Input value={form.specialty} onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))} placeholder="Odontología General" required />
+                <div className="flex items-center justify-between">
+                  <Label>Especialidad *</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                    onClick={() => setSpecialtyManagerOpen(true)}
+                  >
+                    <Settings className="w-3 h-3" /> Gestionar
+                  </Button>
+                </div>
+                <Select value={form.specialty} onValueChange={(v) => setForm((f) => ({ ...f, specialty: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar especialidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {specialties.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Sede / Sucursal</Label>
@@ -245,8 +277,30 @@ const Doctores = () => {
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
             </div>
             <div className="space-y-1.5">
-              <Label>Especialidad *</Label>
-              <Input value={form.specialty} onChange={(e) => setForm((f) => ({ ...f, specialty: e.target.value }))} required />
+              <div className="flex items-center justify-between">
+                <Label>Especialidad *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  onClick={() => setSpecialtyManagerOpen(true)}
+                >
+                  <Settings className="w-3 h-3" /> Gestionar
+                </Button>
+              </div>
+              <Select value={form.specialty} onValueChange={(v) => setForm((f) => ({ ...f, specialty: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar especialidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {specialties.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Sede / Sucursal</Label>
@@ -280,6 +334,14 @@ const Doctores = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SpecialtyManagerModal
+        open={specialtyManagerOpen}
+        onOpenChange={setSpecialtyManagerOpen}
+        vertical={specialtyVertical}
+        onChanged={() => setSpecialtiesRefresh((r) => r + 1)}
+        countUsage={(s) => doctors.filter((d) => d.specialty === s.name).length}
+      />
     </div>
   );
 };
