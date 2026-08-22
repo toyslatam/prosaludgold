@@ -1,8 +1,10 @@
 /**
  * Ubicaciones de consulta (Consultorio, Camilla, Sillón, Box, Salón, etc.)
+ * dentro de una sede. La sede (siteId) ahora referencia la tabla real
+ * `sedes`; ver src/lib/agenda/sites.ts.
  */
 
-import { getSiteById, getSites } from "./sites";
+import { getSites, type Site } from "./sites";
 
 export const LOCATION_TYPES = [
   "Consultorio",
@@ -49,65 +51,89 @@ function save(data: Location[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-/** Seed compatible con chairId c1..c6 existentes en citas */
-function seed(): Location[] {
-  const sites = getSites();
-  const central = sites.find((s) => s.name === "Sede Central")?.id ?? sites[0]?.id;
-  const sur = sites.find((s) => s.name === "Sede Sur")?.id ?? sites[1]?.id;
-  const norte = sites.find((s) => s.name === "Sede Norte")?.id ?? sites[2]?.id;
+/** Siembra ubicaciones de ejemplo repartidas entre las sedes reales existentes. */
+async function seed(vertical?: string): Promise<Location[]> {
+  const sites = await getSites(vertical);
+  if (sites.length === 0) {
+    save([]);
+    return [];
+  }
+  const s1 = sites[0].id;
+  const s2 = sites[1]?.id ?? s1;
+  const s3 = sites[2]?.id ?? s1;
   const now = new Date().toISOString();
   const list: Location[] = [
-    { id: "c1", name: "Sillón 1", type: "Sillón", siteId: central, isActive: true, createdAt: now, updatedAt: now },
-    { id: "c2", name: "Sillón 2", type: "Sillón", siteId: central, isActive: true, createdAt: now, updatedAt: now },
-    { id: "c3", name: "Sillón 3", type: "Sillón", siteId: central, isActive: true, createdAt: now, updatedAt: now },
-    { id: "c4", name: "Box 1", type: "Box", siteId: sur, isActive: true, createdAt: now, updatedAt: now },
-    { id: "c5", name: "Box 2", type: "Box", siteId: sur, isActive: true, createdAt: now, updatedAt: now },
-    { id: "c6", name: "Sillón 1", type: "Sillón", siteId: norte, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c1", name: "Sillón 1", type: "Sillón", siteId: s1, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c2", name: "Sillón 2", type: "Sillón", siteId: s1, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c3", name: "Sillón 3", type: "Sillón", siteId: s1, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c4", name: "Box 1", type: "Box", siteId: s2, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c5", name: "Box 2", type: "Box", siteId: s2, isActive: true, createdAt: now, updatedAt: now },
+    { id: "c6", name: "Sillón 1", type: "Sillón", siteId: s3, isActive: true, createdAt: now, updatedAt: now },
   ];
   save(list);
   return list;
-}
-
-export function getLocations(filters: LocationFilters = {}): Location[] {
-  let list = load();
-  if (list.length === 0) list = seed();
-
-  if (!filters.includeInactive) list = list.filter((l) => l.isActive);
-  if (filters.siteId) list = list.filter((l) => l.siteId === filters.siteId);
-  if (filters.type) list = list.filter((l) => l.type === filters.type);
-  if (filters.q?.trim()) {
-    const q = filters.q.trim().toLowerCase();
-    list = list.filter(
-      (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.type.toLowerCase().includes(q) ||
-        (getSiteById(l.siteId)?.name ?? "").toLowerCase().includes(q),
-    );
-  }
-  return list.sort((a, b) => {
-    const siteA = getSiteById(a.siteId)?.name ?? "";
-    const siteB = getSiteById(b.siteId)?.name ?? "";
-    if (siteA !== siteB) return siteA.localeCompare(siteB);
-    if (a.type !== b.type) return a.type.localeCompare(b.type);
-    return a.name.localeCompare(b.name);
-  });
 }
 
 export interface LocationWithSiteName extends Location {
   siteName: string;
 }
 
-export function getLocationsWithSiteNames(filters: LocationFilters = {}): LocationWithSiteName[] {
-  return getLocations(filters).map((l) => ({
-    ...l,
-    siteName: getSiteById(l.siteId)?.name ?? "",
-  }));
+async function siteNameMap(vertical?: string): Promise<Map<string, string>> {
+  const sites = await getSites(vertical);
+  return new Map(sites.map((s: Site) => [s.id, s.name]));
 }
 
-export function getLocationById(id: string): Location | undefined {
+/**
+ * Variante síncrona sin nombre de sede resuelto (no llama a Supabase).
+ * Uso: hidratación masiva de datos ya síncronos (ej. getAppointmentsWithDetails)
+ * donde no vale la pena cascadear a async solo por un nombre de sede.
+ */
+export function getLocationsRaw(filters: Pick<LocationFilters, "includeInactive"> = {}): Location[] {
   const list = load();
-  if (list.length === 0) seed();
-  return load().find((l) => l.id === id);
+  if (!filters.includeInactive) return list.filter((l) => l.isActive);
+  return list;
+}
+
+export async function getLocations(filters: LocationFilters = {}, vertical?: string): Promise<Location[]> {
+  let list = load();
+  if (list.length === 0) list = await seed(vertical);
+
+  if (!filters.includeInactive) list = list.filter((l) => l.isActive);
+  if (filters.siteId) list = list.filter((l) => l.siteId === filters.siteId);
+  if (filters.type) list = list.filter((l) => l.type === filters.type);
+
+  const names = await siteNameMap(vertical);
+
+  if (filters.q?.trim()) {
+    const q = filters.q.trim().toLowerCase();
+    list = list.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.type.toLowerCase().includes(q) ||
+        (names.get(l.siteId) ?? "").toLowerCase().includes(q)
+    );
+  }
+  return list.sort((a, b) => {
+    const siteA = names.get(a.siteId) ?? "";
+    const siteB = names.get(b.siteId) ?? "";
+    if (siteA !== siteB) return siteA.localeCompare(siteB);
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.name.localeCompare(b.name);
+  });
+}
+
+export async function getLocationsWithSiteNames(
+  filters: LocationFilters = {},
+  vertical?: string
+): Promise<LocationWithSiteName[]> {
+  const [list, names] = await Promise.all([getLocations(filters, vertical), siteNameMap(vertical)]);
+  return list.map((l) => ({ ...l, siteName: names.get(l.siteId) ?? "" }));
+}
+
+export async function getLocationById(id: string, vertical?: string): Promise<Location | undefined> {
+  let list = load();
+  if (list.length === 0) list = await seed(vertical);
+  return list.find((l) => l.id === id);
 }
 
 function nextId(): string {
@@ -116,10 +142,8 @@ function nextId(): string {
 
 export function createLocation(data: Omit<Location, "id" | "createdAt" | "updatedAt">): Location {
   const list = load();
-  if (list.length === 0) seed();
-  const next = load();
-  const exists = next.some(
-    (l) => l.siteId === data.siteId && l.name.toLowerCase() === data.name.trim().toLowerCase(),
+  const exists = list.some(
+    (l) => l.siteId === data.siteId && l.name.toLowerCase() === data.name.trim().toLowerCase()
   );
   if (exists) throw new Error("Ya existe una ubicación con ese nombre en esta sede.");
   const now = new Date().toISOString();
@@ -133,14 +157,14 @@ export function createLocation(data: Omit<Location, "id" | "createdAt" | "update
     createdAt: now,
     updatedAt: now,
   };
-  next.push(loc);
-  save(next);
+  list.push(loc);
+  save(list);
   return loc;
 }
 
 export function updateLocation(
   id: string,
-  data: Partial<Pick<Location, "name" | "type" | "siteId" | "description" | "isActive">>,
+  data: Partial<Pick<Location, "name" | "type" | "siteId" | "description" | "isActive">>
 ): void {
   const list = load();
   const idx = list.findIndex((l) => l.id === id);
@@ -148,7 +172,10 @@ export function updateLocation(
   const current = list[idx];
   if (data.name !== undefined) {
     const duplicate = list.some(
-      (l) => l.id !== id && l.siteId === (data.siteId ?? current.siteId) && l.name.toLowerCase() === data.name.trim().toLowerCase(),
+      (l) =>
+        l.id !== id &&
+        l.siteId === (data.siteId ?? current.siteId) &&
+        l.name.toLowerCase() === data.name.trim().toLowerCase()
     );
     if (duplicate) throw new Error("Ya existe una ubicación con ese nombre en esta sede.");
   }

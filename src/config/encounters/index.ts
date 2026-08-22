@@ -28,7 +28,6 @@ const spa: EncounterFormConfig = {
   proceduresLabel: "Servicios",
   proceduresAddLabel: "Agregar servicio",
   notesLabel: "Notas de sesión",
-  showTherapist: true,
   showCabin: true,
 };
 

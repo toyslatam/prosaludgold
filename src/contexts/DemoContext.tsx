@@ -23,9 +23,6 @@ interface DemoProviderProps {
 
 export function DemoProvider({ children, enabledModules }: DemoProviderProps) {
   const { vertical: param } = useParams<{ vertical: string }>();
-  if (param && !isValidVertical(param)) {
-    return <Navigate to="/demo/multi" replace />;
-  }
   const vertical = param && isValidVertical(param) ? param : "multi";
   const basePath = `/demo/${vertical}`;
   const value = useMemo(
@@ -36,6 +33,10 @@ export function DemoProvider({ children, enabledModules }: DemoProviderProps) {
     }),
     [vertical, basePath],
   );
+
+  if (param && !isValidVertical(param)) {
+    return <Navigate to="/demo/multi" replace />;
+  }
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }
 

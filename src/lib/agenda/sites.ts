@@ -1,66 +1,36 @@
 /**
  * Sedes (Sucursales/Clínicas) para asociar ubicaciones.
+ * Fuente única: la tabla real `sedes` (gestionada en Configuración).
+ * Ya no hay un CRUD de sedes local aquí — solo lectura, filtrable por módulo.
  */
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Site {
   id: string;
   name: string;
 }
 
-const STORAGE_KEY = "agenda_sites";
-
-const SEED: Site[] = [
-  { id: "site-central", name: "Sede Central" },
-  { id: "site-sur", name: "Sede Sur" },
-  { id: "site-norte", name: "Sede Norte" },
-];
-
-function load(): Site[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as Site[];
-  } catch {
-    return [];
-  }
+/** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
+export async function getSites(vertical?: string): Promise<Site[]> {
+  const { data, error } = await supabase
+    .from("sedes")
+    .select("id, name, active, modules_enabled")
+    .eq("active", true)
+    .order("name");
+  if (error) throw error;
+  const filtered = (data ?? []).filter(
+    (s) =>
+      !vertical ||
+      vertical === "multi" ||
+      !s.modules_enabled?.length ||
+      s.modules_enabled.includes(vertical)
+  );
+  return filtered.map((s) => ({ id: s.id, name: s.name }));
 }
 
-function save(data: Site[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
-export function getSites(): Site[] {
-  const stored = load();
-  if (stored.length === 0) {
-    save(SEED);
-    return SEED;
-  }
-  return stored;
-}
-
-export function getSiteById(id: string): Site | undefined {
-  return getSites().find((s) => s.id === id);
-}
-
-export function addSite(name: string): Site {
-  const list = load();
-  if (list.length === 0) save(SEED);
-  const next = load();
-  const id = `site-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const site: Site = { id, name };
-  next.push(site);
-  save(next);
-  return site;
-}
-
-export function updateSite(id: string, data: Partial<Pick<Site, "name">>): void {
-  const list = load();
-  const idx = list.findIndex((s) => s.id === id);
-  if (idx === -1) return;
-  list[idx] = { ...list[idx], ...data };
-  save(list);
-}
-
-export function deleteSite(id: string): void {
-  save(load().filter((s) => s.id !== id));
+export async function getSiteById(id: string): Promise<Site | undefined> {
+  const { data, error } = await supabase.from("sedes").select("id, name").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data ?? undefined;
 }

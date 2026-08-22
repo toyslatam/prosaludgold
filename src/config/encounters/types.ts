@@ -23,8 +23,6 @@ export interface EncounterFormConfig {
   showVitals?: boolean;
   /** Mostrar sección Receta (medical) */
   showPrescription?: boolean;
-  /** Mostrar terapeuta (spa) */
-  showTherapist?: boolean;
   /** Mostrar cabina/ubicación (spa) */
   showCabin?: boolean;
 }

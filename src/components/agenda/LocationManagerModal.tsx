@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { getSites } from "@/lib/agenda/sites";
-import { getLocations } from "@/lib/agenda/locations";
+import { useState, useEffect } from "react";
+import { getSites, type Site } from "@/lib/agenda/sites";
 import {
   getLocationsWithSiteNames,
-  getLocationById,
   createLocation,
   updateLocation,
   archiveLocation,
   unarchiveLocation,
   deleteLocation,
   LOCATION_TYPES,
-  type Location,
   type LocationWithSiteName,
 } from "@/lib/agenda/locations";
 import { Button } from "@/components/ui/button";
@@ -64,12 +61,7 @@ export function LocationManagerModal({
   appointmentCountByLocationId,
 }: LocationManagerModalProps) {
   const [sitesKey, setSitesKey] = useState(0);
-  const sites = useMemo(() => getSites(), [sitesKey]);
-  const locationCountBySiteId = useCallback(
-    (siteId: string) =>
-      getLocations({ includeInactive: true }).filter((l) => l.siteId === siteId).length,
-    [],
-  );
+  const [sites, setSites] = useState<Site[]>([]);
   const [siteManagerOpen, setSiteManagerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterSiteId, setFilterSiteId] = useState<string>("all");
@@ -88,17 +80,43 @@ export function LocationManagerModal({
   const [editType, setEditType] = useState("");
   const [editTypeCustom, setEditTypeCustom] = useState("");
   const [editSiteId, setEditSiteId] = useState("");
+  const [editDescription, setEditDescription] = useState<string | undefined>(undefined);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filtered, setFiltered] = useState<LocationWithSiteName[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const filtered = useMemo(() => {
-    return getLocationsWithSiteNames({
+  useEffect(() => {
+    if (!open) return;
+    getSites()
+      .then(setSites)
+      .catch(() => toast.error("No se pudieron cargar las sedes."));
+  }, [open, sitesKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getLocationsWithSiteNames({
       q: search.trim() || undefined,
       siteId: filterSiteId === "all" ? undefined : filterSiteId,
       type: filterType === "all" ? undefined : filterType,
       includeInactive: showArchived,
-    });
-  }, [locations, search, filterSiteId, filterType, showArchived]);
+    })
+      .then((data) => {
+        if (!cancelled) setFiltered(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar las ubicaciones.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, locations, search, filterSiteId, filterType, showArchived, refreshKey]);
+
+  const refresh = () => {
+    setRefreshKey((k) => k + 1);
+    onLocationsChange();
+  };
 
   const resolveType = (type: string, custom: string) =>
     type === CUSTOM_TYPE ? custom.trim() || "Otro" : type;
@@ -128,7 +146,7 @@ export function LocationManagerModal({
         description: newDescription.trim() || undefined,
         isActive: true,
       });
-      onLocationsChange();
+      refresh();
       setNewName("");
       setNewDescription("");
       setNewType(LOCATION_TYPES[0]);
@@ -147,6 +165,7 @@ export function LocationManagerModal({
     setEditType(LOCATION_TYPES.includes(loc.type as typeof LOCATION_TYPES[number]) ? loc.type : CUSTOM_TYPE);
     setEditTypeCustom(LOCATION_TYPES.includes(loc.type as typeof LOCATION_TYPES[number]) ? "" : loc.type);
     setEditSiteId(loc.siteId);
+    setEditDescription(loc.description);
   };
 
   const saveEdit = () => {
@@ -162,14 +181,13 @@ export function LocationManagerModal({
       return;
     }
     try {
-      const current = getLocationById(editingId);
       updateLocation(editingId, {
         name,
         type: typeVal,
         siteId: editSiteId,
-        description: current?.description,
+        description: editDescription,
       });
-      onLocationsChange();
+      refresh();
       setEditingId(null);
       toast.success("Ubicación actualizada");
     } catch (e) {
@@ -182,7 +200,7 @@ export function LocationManagerModal({
   const handleArchive = (id: string, isActive: boolean) => {
     if (isActive) archiveLocation(id);
     else unarchiveLocation(id);
-    onLocationsChange();
+    refresh();
     toast.success(isActive ? "Ubicación archivada" : "Ubicación activada");
   };
 
@@ -198,7 +216,7 @@ export function LocationManagerModal({
       return;
     }
     deleteLocation(deletingId);
-    onLocationsChange();
+    refresh();
     setDeletingId(null);
     toast.success("Ubicación eliminada");
   };
@@ -535,7 +553,6 @@ export function LocationManagerModal({
         open={siteManagerOpen}
         onOpenChange={setSiteManagerOpen}
         onSitesChange={() => setSitesKey((k) => k + 1)}
-        locationCountBySiteId={locationCountBySiteId}
       />
     </>
   );

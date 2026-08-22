@@ -3,11 +3,11 @@ import { useDemo } from "@/contexts/DemoContext";
 import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients, getPatientById } from "@/lib/patients/repository";
+import { useDoctors } from "@/hooks/useSupabase";
 import { toast } from "sonner";
-import { getDoctors } from "@/lib/agenda/repository";
 import { applyConsumptionFromEncounter } from "@/lib/inventory/consumption";
 import { getSites } from "@/lib/agenda/sites";
-import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
+import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,11 @@ const AtencionClinica = () => {
 
   const encounters = getEncounters(vertical);
   const [patients, setPatients] = useState<{ id: string; name: string }[]>([]);
+  const { data: doctorsData = [] } = useDoctors(vertical);
+  const doctors = useMemo(
+    () => doctorsData.map((d) => ({ id: d.id, name: d.name })),
+    [doctorsData]
+  );
 
   useEffect(() => {
     getPatients(vertical)
@@ -34,31 +39,24 @@ const AtencionClinica = () => {
     patients.forEach((p) => map.set(p.id, p.name));
     return map;
   }, [patients]);
-  const doctors = useMemo(
-    () => getDoctors().map((d) => ({ id: d.id, name: d.name })),
-    [],
-  );
-  const sites = useMemo(
-    () => getSites().map((s) => ({ id: s.id, name: s.name })),
-    [],
-  );
-  const locations = useMemo(
-    () =>
-      getLocationsWithSiteNames({ includeInactive: false }).map((l) => ({
-        id: l.id,
-        name: l.name,
-        siteName: l.siteName,
-        type: l.type,
-      })),
-    [],
-  );
+
+  const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<LocationWithSiteName[]>([]);
+
+  useEffect(() => {
+    getSites(vertical)
+      .then(setSites)
+      .catch(() => toast.error("No se pudieron cargar las sedes."));
+    getLocationsWithSiteNames({ includeInactive: false }, vertical)
+      .then(setLocations)
+      .catch(() => toast.error("No se pudieron cargar las ubicaciones."));
+  }, [vertical]);
 
   const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
     const encounter = saveEncounter(payload);
     if (payload.status === "COMPLETED" && payload.inventoryUsed?.length) {
       const patient = await getPatientById(encounter.patientId).catch(() => undefined);
-      const doctors = getDoctors();
-      const professional = doctors.find((d) => d.id === encounter.professionalId);
+      const professional = doctorsData.find((d) => d.id === encounter.professionalId);
       applyConsumptionFromEncounter(vertical, {
         encounterId: encounter.id,
         refLabel: `Atención #${encounter.id.slice(-6)}`,

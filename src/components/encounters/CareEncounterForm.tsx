@@ -77,6 +77,7 @@ export function CareEncounterForm({
   onCancel,
 }: CareEncounterFormProps) {
   const config = getEncounterFormConfig(vertical);
+  const professionalLabel = vertical === "spa" ? "Terapeuta" : vertical === "medical" ? "Médico" : "Doctor";
   const proceduresCatalog = getProcedures(vertical);
   const inventoryItems = useMemo(() => getInventoryItems(vertical), [vertical]);
 
@@ -261,10 +262,10 @@ export function CareEncounterForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Profesional</Label>
+              <Label>{professionalLabel}</Label>
               <Select value={professionalId} onValueChange={setProfessionalId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccione profesional" />
+                  <SelectValue placeholder={`Seleccione ${professionalLabel.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {doctors.map((d) => (
@@ -435,32 +436,6 @@ export function CareEncounterForm({
                   }
                 />
               </div>
-            </div>
-          )}
-
-          {config.showTherapist && (
-            <div className="space-y-2">
-              <Label>Terapeuta</Label>
-              <Select
-                value={verticalData.spa?.therapistId ?? ""}
-                onValueChange={(v) =>
-                  setVerticalData((prev) => ({
-                    ...prev,
-                    spa: { ...prev.spa, therapistId: v },
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccione terapeuta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {doctors.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           )}
 

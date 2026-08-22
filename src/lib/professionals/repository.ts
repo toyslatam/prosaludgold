@@ -4,7 +4,6 @@
 
 import type { VerticalKey } from "@/config/demos";
 import type { Professional } from "@/types/professionals";
-import { getSites } from "@/lib/agenda/sites";
 import { getSpecialties } from "./specialties";
 
 const STORAGE_KEY = "psg_professionals";
@@ -27,8 +26,6 @@ function save(data: Professional[]): void {
 function seedDentalIfNeeded(): void {
   const list = load();
   if (list.some((p) => p.vertical === "dental")) return;
-  const sites = getSites();
-  const siteByName = new Map(sites.map((s) => [s.name, s.id]));
   const now = new Date().toISOString();
   const seed = [
     { fullName: "Dra. María González", specialtyName: "Ortodoncia", branch: "Sede Central", available: true },
@@ -46,7 +43,6 @@ function seedDentalIfNeeded(): void {
   const specByName = new Map(dentalSpecs.map((s) => [s.name, s.id]));
   const professionals: Professional[] = seed.map((s, i) => {
     const id = `d${i + 1}`;
-    const siteId = siteByName.get(s.branch) ?? sites[0]?.id ?? "";
     const specialtyId =
       specByName.get(s.specialtyName) ??
       dentalSpecs.find((sp) => sp.name.includes(s.specialtyName) || s.specialtyName.includes(sp.name))?.id ??
@@ -57,7 +53,7 @@ function seedDentalIfNeeded(): void {
       vertical: "dental",
       fullName: s.fullName,
       specialtyId,
-      siteIds: siteId ? [siteId] : [],
+      siteIds: [],
       isAvailable: s.available,
       isActive: true,
       commissionDefault: { type: "PERCENT" as const, value: 10 },

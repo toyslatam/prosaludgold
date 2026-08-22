@@ -1,8 +1,7 @@
 import type { AppointmentWithDetails } from "@/types/agenda";
 import type { AppointmentRow, PatientRow, DoctorRow, ChairRow } from "./types";
 import { seedDoctors, seedPatients, seedAppointments } from "@/data/agendaSeed";
-import { getLocations } from "./locations";
-import { getSiteById } from "./sites";
+import { getLocationsRaw } from "./locations";
 
 const STORAGE_KEYS = {
   appointments: "agenda_appointments",
@@ -29,12 +28,16 @@ export function getDoctors(): DoctorRow[] {
   return loadJson(STORAGE_KEYS.doctors, seedDoctors);
 }
 
-/** Ubicaciones activas como ChairRow para compatibilidad (id, name, branch = sede) */
+/**
+ * Ubicaciones activas como ChairRow para compatibilidad (id, name).
+ * `branch` queda vacío aquí (requeriría resolver la sede real de forma
+ * async); se resuelve donde sí hace falta vía getLocationsWithSiteNames.
+ */
 export function getChairs(): ChairRow[] {
-  return getLocations({ includeInactive: false }).map((l) => ({
+  return getLocationsRaw({ includeInactive: false }).map((l) => ({
     id: l.id,
     name: l.name,
-    branch: getSiteById(l.siteId)?.name ?? "",
+    branch: "",
   }));
 }
 

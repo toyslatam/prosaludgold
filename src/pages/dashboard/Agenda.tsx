@@ -11,7 +11,7 @@ import {
   usePatients,
 } from "@/hooks/useSupabase";
 import { getChairs } from "@/lib/agenda/repository";
-import { getLocationsWithSiteNames } from "@/lib/agenda/locations";
+import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { filterAppointmentsByDate, applyAgendaFilters } from "@/lib/agenda/filterAppointments";
 import { AgendaToolbar } from "@/components/agenda/AgendaToolbar";
 import { FiltersPanel, getDefaultAgendaFilters, type AgendaFiltersState } from "@/components/agenda/FiltersPanel";
@@ -63,10 +63,18 @@ export default function Agenda() {
 
   // ── Local location/chair data (not in Supabase) ───────────
   const chairs = useMemo(() => getChairs(), [chairsKey]);
-  const locationsForForm = useMemo(
-    () => getLocationsWithSiteNames({ includeInactive: false }),
-    [chairsKey],
-  );
+  const [locationsForForm, setLocationsForForm] = useState<LocationWithSiteName[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getLocationsWithSiteNames({ includeInactive: false })
+      .then((data) => {
+        if (!cancelled) setLocationsForForm(data);
+      })
+      .catch(() => toast.error("No se pudieron cargar las ubicaciones."));
+    return () => {
+      cancelled = true;
+    };
+  }, [chairsKey]);
 
   useEffect(() => {
     const patientId = searchParams.get("patientId");
