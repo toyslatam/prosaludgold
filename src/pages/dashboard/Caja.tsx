@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Printer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAppConfig } from "@/contexts/AppConfigContext";
+import { generateCierreCajaPdf } from "@/lib/caja/generateCierreCajaPdf";
 
 type EntryForm = {
   type: "ingreso" | "egreso";
@@ -26,6 +28,7 @@ const Caja = () => {
 
   const { data: entries = [], isLoading } = useCashEntries();
   const insert = useInsertCashEntry();
+  const { clinicConfig } = useAppConfig();
 
   const shown = entries.filter((e) => !filterDate || e.date === filterDate);
   const ingresos = shown.filter((e) => e.type === "ingreso").reduce((s, e) => s + e.amount, 0);
@@ -117,7 +120,30 @@ const Caja = () => {
               </form>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" className="gap-2" onClick={() => toast.success("Función de cierre próximamente")}>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              if (shown.length === 0) {
+                toast.error("No hay movimientos para esta fecha");
+                return;
+              }
+              generateCierreCajaPdf(
+                clinicConfig?.name ?? "ProSalud Gold",
+                filterDate,
+                shown.map((e) => ({
+                  id: e.id,
+                  date: e.date,
+                  description: e.description,
+                  amount: e.amount,
+                  type: e.type,
+                  method: e.method,
+                  patientName: e.patients?.name,
+                }))
+              );
+              toast.success("Cierre de caja generado");
+            }}
+          >
             <Printer className="w-4 h-4" /> Cierre de caja
           </Button>
         </div>
