@@ -25,7 +25,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getPatientById, updatePatient } from "@/lib/patients/repository";
 import { getClinicalEventsByPatient, type ClinicalEvent } from "@/lib/patients/clinicalHistory";
-import { BENEFITS_OPTIONS, BRANCH_OPTIONS } from "@/config/patientOptions";
+import { BENEFITS_OPTIONS } from "@/config/patientOptions";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 
 function getEventTypeLabel(e: ClinicalEvent): string {
   switch (e.type) {
@@ -55,6 +56,8 @@ function getEventNote(e: ClinicalEvent): string {
 
 export default function PatientData() {
   const { patient: contextPatient } = useOutletContext<{ patient: Patient }>();
+  const { sedes } = useAppConfig();
+  const activeSedes = sedes.filter((s) => s.active);
   const [editOpen, setEditOpen] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [editForm, setEditForm] = useState({
@@ -185,21 +188,27 @@ export default function PatientData() {
                 </div>
                 <div className="space-y-2">
                   <Label>Sede / Sucursal</Label>
-                  <Select
-                    value={editForm.branch}
-                    onValueChange={(v) => setEditForm((f) => ({ ...f, branch: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BRANCH_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {activeSedes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      No hay sedes registradas. Agrega una en Configuración.
+                    </p>
+                  ) : (
+                    <Select
+                      value={editForm.branch}
+                      onValueChange={(v) => setEditForm((f) => ({ ...f, branch: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeSedes.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Profesional a cargo</Label>

@@ -17,7 +17,7 @@ import { Search, Plus, Eye, Phone, Mail, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { mockDoctors } from "@/data/mockData";
-import { BENEFITS_OPTIONS, BRANCH_OPTIONS } from "@/config/patientOptions";
+import { BENEFITS_OPTIONS } from "@/config/patientOptions";
 
 const EMPTY_FORM = {
   name: "",
@@ -38,7 +38,8 @@ const Pacientes = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const navigate = useNavigate();
   const { basePath, vertical } = useDemo();
-  const { enabledModules } = useAppConfig();
+  const { enabledModules, sedes } = useAppConfig();
+  const activeSedes = sedes.filter((s) => s.active);
 
   const { data: patients = [], isLoading } = usePatients(vertical);
   const insert = useInsertPatient();
@@ -171,21 +172,27 @@ const Pacientes = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Sede / Sucursal</Label>
-                  <Select
-                    value={form.branch}
-                    onValueChange={(v) => setForm((f) => ({ ...f, branch: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BRANCH_OPTIONS.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
-                          {opt}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {activeSedes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-2">
+                      No hay sedes registradas. Agrega una en Configuración.
+                    </p>
+                  ) : (
+                    <Select
+                      value={form.branch}
+                      onValueChange={(v) => setForm((f) => ({ ...f, branch: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeSedes.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">
