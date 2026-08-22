@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useDemo } from "@/contexts/DemoContext";
 import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
-import { getPatients, getPatientById } from "@/lib/patients/repository";
-import { useDoctors } from "@/hooks/useSupabase";
+import { getPatients } from "@/lib/patients/repository";
+import { useDoctors, useInventoryItems, useUpdateInventoryItem } from "@/hooks/useSupabase";
 import { toast } from "sonner";
-import { applyConsumptionFromEncounter } from "@/lib/inventory/consumption";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
@@ -27,6 +26,22 @@ const AtencionClinica = () => {
   const doctors = useMemo(
     () => doctorsData.map((d) => ({ id: d.id, name: d.name })),
     [doctorsData]
+  );
+
+  const { data: inventoryData = [] } = useInventoryItems();
+  const updateInventoryItem = useUpdateInventoryItem();
+  const inventoryItems = useMemo(
+    () =>
+      inventoryData.map((i) => ({
+        id: i.id,
+        name: i.name,
+        category: i.category,
+        stock: i.stock,
+        minStock: i.min_stock,
+        unit: i.unit,
+        supplier: i.supplier,
+      })),
+    [inventoryData]
   );
 
   useEffect(() => {
@@ -58,17 +73,17 @@ const AtencionClinica = () => {
   const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
     const encounter = saveEncounter(payload);
     if (payload.status === "COMPLETED" && payload.inventoryUsed?.length) {
-      const patient = await getPatientById(encounter.patientId).catch(() => undefined);
-      const professional = doctorsData.find((d) => d.id === encounter.professionalId);
-      applyConsumptionFromEncounter(vertical, {
-        encounterId: encounter.id,
-        refLabel: `Atención #${encounter.id.slice(-6)}`,
-        inventoryUsed: encounter.inventoryUsed,
-        patientId: encounter.patientId,
-        patientName: patient?.name,
-        professionalId: encounter.professionalId,
-        professionalName: professional?.name,
-      });
+      for (const used of encounter.inventoryUsed) {
+        if (!used.productId || used.quantity <= 0) continue;
+        const current = inventoryData.find((i) => i.id === used.productId);
+        if (!current) continue;
+        const newStock = Math.max(0, current.stock - used.quantity);
+        try {
+          await updateInventoryItem.mutateAsync({ id: used.productId, patch: { stock: newStock } });
+        } catch {
+          toast.error(`No se pudo descontar stock de "${used.name}".`);
+        }
+      }
     }
     setShowForm(false);
   };
@@ -82,6 +97,7 @@ const AtencionClinica = () => {
           doctors={doctors}
           sites={sites}
           locations={locations}
+          inventoryItems={inventoryItems}
           onManageLocations={() => setLocationManagerOpen(true)}
           onSave={handleSave}
           onCancel={() => setShowForm(false)}

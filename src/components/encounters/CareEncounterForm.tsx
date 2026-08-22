@@ -40,11 +40,19 @@ import type {
   MedicalVerticalData,
 } from "@/types/careEncounter";
 import { getProcedures, getProcedureById } from "@/lib/agenda/procedures";
-import { getInventoryItems } from "@/lib/inventory/items";
 import { PrescriptionSection } from "./PrescriptionSection";
 
 type PatientOption = { id: string; name: string };
 type DoctorOption = { id: string; name: string };
+export type InventoryOption = {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  minStock: number;
+  unit: string;
+  supplier: string | null;
+};
 
 type CareEncounterPayload = Omit<CareEncounter, "id" | "createdAt" | "updatedAt">;
 
@@ -54,6 +62,7 @@ interface CareEncounterFormProps {
   doctors: DoctorOption[];
   sites: { id: string; name: string }[];
   locations: { id: string; name: string; siteName: string; type: string }[];
+  inventoryItems: InventoryOption[];
   onManageLocations?: () => void;
   onSave: (payload: CareEncounterPayload) => void;
   onCancel: () => void;
@@ -72,6 +81,7 @@ export function CareEncounterForm({
   doctors,
   sites,
   locations,
+  inventoryItems,
   onManageLocations,
   onSave,
   onCancel,
@@ -79,7 +89,6 @@ export function CareEncounterForm({
   const config = getEncounterFormConfig(vertical);
   const professionalLabel = vertical === "spa" ? "Terapeuta" : vertical === "medical" ? "Médico" : "Doctor";
   const proceduresCatalog = getProcedures(vertical);
-  const inventoryItems = useMemo(() => getInventoryItems(vertical), [vertical]);
 
   const [patientId, setPatientId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
@@ -132,7 +141,7 @@ export function CareEncounterForm({
       toast.error("Seleccione un profesional");
       return false;
     }
-    const invList = getInventoryItems(vertical);
+    const invList = inventoryItems;
     for (const inv of inventoryUsed) {
       if (!inv.name?.trim()) continue;
       if (inv.quantity <= 0) {
@@ -163,7 +172,7 @@ export function CareEncounterForm({
   };
 
   const hasInventoryOverStock = (): boolean => {
-    const invList = getInventoryItems(vertical);
+    const invList = inventoryItems;
     return inventoryUsed.some((inv) => {
       if (!inv.productId || inv.quantity <= 0) return false;
       const item = invList.find((i) => i.id === inv.productId);
