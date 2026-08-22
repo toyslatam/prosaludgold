@@ -191,6 +191,7 @@ export type Database = {
           name: string
           specialty: string
           updated_at: string
+          modules_enabled: string[]
         }
         Insert: {
           available?: boolean
@@ -200,6 +201,7 @@ export type Database = {
           name: string
           specialty: string
           updated_at?: string
+          modules_enabled?: string[]
         }
         Update: {
           available?: boolean
@@ -209,6 +211,7 @@ export type Database = {
           name?: string
           specialty?: string
           updated_at?: string
+          modules_enabled?: string[]
         }
         Relationships: []
       }

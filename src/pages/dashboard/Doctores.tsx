@@ -9,6 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Stethoscope, Plus, Pencil, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useDemo } from "@/contexts/DemoContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
+import type { VerticalKey } from "@/config/demos";
+
+const MODULE_LABELS: Record<string, string> = {
+  dental: "Odontología",
+  medical: "Medicina General",
+  spa: "Spa / Bienestar",
+};
 
 type DoctorForm = {
   name: string;
@@ -21,15 +29,27 @@ const EMPTY_FORM: DoctorForm = { name: "", specialty: "", branch: "", available:
 
 const Doctores = () => {
   const { vertical } = useDemo();
+  const { enabledModules } = useAppConfig();
   const [search, setSearch] = useState("");
   const [filterAvailable, setFilterAvailable] = useState<"all" | "active" | "inactive">("all");
   const [openNew, setOpenNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<DoctorForm>(EMPTY_FORM);
+  const [formModules, setFormModules] = useState<VerticalKey[]>(
+    vertical === "multi" ? enabledModules : [vertical as VerticalKey]
+  );
 
-  const { data: doctors = [], isLoading } = useDoctors();
+  const { data: doctors = [], isLoading } = useDoctors(vertical);
   const insert = useInsertDoctor();
   const update = useUpdateDoctor();
+
+  const toggleFormModule = (key: VerticalKey) => {
+    setFormModules((prev) => {
+      const has = prev.includes(key);
+      if (has && prev.length === 1) return prev;
+      return has ? prev.filter((m) => m !== key) : [...prev, key];
+    });
+  };
 
   const professionalLabel = vertical === "spa" ? "Terapeuta" : vertical === "medical" ? "Médico" : "Doctor";
 
@@ -47,6 +67,7 @@ const Doctores = () => {
     const doc = doctors.find((d) => d.id === id);
     if (!doc) return;
     setForm({ name: doc.name, specialty: doc.specialty, branch: doc.branch, available: doc.available });
+    setFormModules(doc.modules_enabled?.length ? (doc.modules_enabled as VerticalKey[]) : enabledModules);
     setEditingId(id);
   };
 
@@ -56,7 +77,7 @@ const Doctores = () => {
 
     if (editingId) {
       update.mutate(
-        { id: editingId, patch: form },
+        { id: editingId, patch: { ...form, modules_enabled: formModules } },
         {
           onSuccess: () => { toast.success(`${professionalLabel} actualizado`); setEditingId(null); setForm(EMPTY_FORM); },
           onError: (err) => toast.error(err.message),
@@ -64,7 +85,7 @@ const Doctores = () => {
       );
     } else {
       insert.mutate(
-        { ...form, branch: form.branch || "Principal" },
+        { ...form, branch: form.branch || "Principal", modules_enabled: formModules },
         {
           onSuccess: () => { toast.success(`${professionalLabel} registrado`); setOpenNew(false); setForm(EMPTY_FORM); },
           onError: (err) => toast.error(err.message),
@@ -97,7 +118,13 @@ const Doctores = () => {
         </div>
         <Dialog open={openNew} onOpenChange={setOpenNew}>
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => setForm(EMPTY_FORM)}>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                setForm(EMPTY_FORM);
+                setFormModules(vertical === "multi" ? enabledModules : [vertical as VerticalKey]);
+              }}
+            >
               <Plus className="w-4 h-4" /> Nuevo {professionalLabel.toLowerCase()}
             </Button>
           </DialogTrigger>
@@ -115,6 +142,28 @@ const Doctores = () => {
               <div className="space-y-1.5">
                 <Label>Sede / Sucursal</Label>
                 <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} placeholder="Principal" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Módulos en los que atiende</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {enabledModules.map((m) => {
+                    const active = formModules.includes(m);
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => toggleFormModule(m)}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        {MODULE_LABELS[m] ?? m}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={isPending}>
                 {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Registrar"}
@@ -202,6 +251,28 @@ const Doctores = () => {
             <div className="space-y-1.5">
               <Label>Sede / Sucursal</Label>
               <Input value={form.branch} onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Módulos en los que atiende</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {enabledModules.map((m) => {
+                  const active = formModules.includes(m);
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => toggleFormModule(m)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/30"
+                      }`}
+                    >
+                      {MODULE_LABELS[m] ?? m}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Guardando…</> : "Guardar cambios"}

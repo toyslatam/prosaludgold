@@ -153,14 +153,16 @@ export const useUpdatePatient = () => {
 
 // ── DOCTORS ───────────────────────────────────────────────────
 
-export const useDoctors = () =>
+/** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
+export const useDoctors = (vertical?: string) =>
   useQuery({
-    queryKey: ["doctors"],
+    queryKey: ["doctors", vertical ?? "all"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("doctors")
-        .select("*")
-        .order("name");
+      let query = supabase.from("doctors").select("*").order("name");
+      if (vertical && vertical !== "multi") {
+        query = query.contains("modules_enabled", [vertical]);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

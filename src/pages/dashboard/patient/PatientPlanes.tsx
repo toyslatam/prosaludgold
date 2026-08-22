@@ -4,7 +4,7 @@ import { useDemo } from "@/contexts/DemoContext";
 import type { Patient } from "@/data/mockData";
 import { getPlansByPatient, addTreatmentPlan } from "@/lib/patients/treatmentPlans";
 import type { TreatmentPlan, PlanFinancialStatus, Prestacion } from "@/lib/patients/treatmentPlans";
-import { getDoctors } from "@/lib/agenda/repository";
+import { useDoctors } from "@/hooks/useSupabase";
 import { getTreatmentPlanLabels } from "@/config/treatmentPlanLabels";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,7 @@ export default function PatientPlanes() {
     return allPlans;
   }, [allPlans, filter]);
 
-  const doctors = useMemo(() => getDoctors(), []);
+  const { data: doctors = [] } = useDoctors(vertical);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState("");
