@@ -69,22 +69,34 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
-      const { data: config } = await supabase
+      const { data: config, error } = await supabase
         .from("clinic_config")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
+      if (error) {
+        // No tratar un error de red/RLS como "todavía no configuró la clínica":
+        // eso forzaría el asistente de onboarding de nuevo aunque la config
+        // ya exista. Se deja el estado anterior intacto y solo se registra.
+        console.error("Error cargando clinic_config:", error);
+        return;
+      }
+
       if (config) {
         setClinicConfig(config as ClinicConfig);
 
-        const { data: sedesData } = await supabase
+        const { data: sedesData, error: sedesError } = await supabase
           .from("sedes")
           .select("*")
           .eq("clinic_config_id", config.id)
           .order("created_at");
 
-        setSedes((sedesData ?? []) as Sede[]);
+        if (sedesError) {
+          console.error("Error cargando sedes:", sedesError);
+        } else {
+          setSedes((sedesData ?? []) as Sede[]);
+        }
       } else {
         setClinicConfig(null);
         setSedes([]);
