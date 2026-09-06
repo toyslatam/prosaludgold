@@ -25,9 +25,26 @@ type DoctorForm = {
   specialty: string;
   branch: string;
   available: boolean;
+  ruc: string;
+  ruc_dv: string;
+  email: string;
+  phone: string;
+  bank_account: string;
 };
 
-const EMPTY_FORM: DoctorForm = { name: "", specialty: "", branch: "", available: true };
+const DEFAULT_PHONE_PREFIX = "+56 ";
+
+const EMPTY_FORM: DoctorForm = {
+  name: "",
+  specialty: "",
+  branch: "",
+  available: true,
+  ruc: "",
+  ruc_dv: "",
+  email: "",
+  phone: DEFAULT_PHONE_PREFIX,
+  bank_account: "",
+};
 
 const Doctores = () => {
   const { vertical } = useDemo();
@@ -79,7 +96,17 @@ const Doctores = () => {
   const openEdit = (id: string) => {
     const doc = doctors.find((d) => d.id === id);
     if (!doc) return;
-    setForm({ name: doc.name, specialty: doc.specialty, branch: doc.branch, available: doc.available });
+    setForm({
+      name: doc.name,
+      specialty: doc.specialty,
+      branch: doc.branch,
+      available: doc.available,
+      ruc: doc.ruc ?? "",
+      ruc_dv: doc.ruc_dv ?? "",
+      email: doc.email ?? "",
+      phone: doc.phone ?? DEFAULT_PHONE_PREFIX,
+      bank_account: doc.bank_account ?? "",
+    });
     setFormModules(doc.modules_enabled?.length ? (doc.modules_enabled as VerticalKey[]) : enabledModules);
     setEditingId(id);
   };
@@ -195,6 +222,28 @@ const Doctores = () => {
                   </Select>
                 )}
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>RUC</Label>
+                  <Input value={form.ruc} onChange={(e) => setForm((f) => ({ ...f, ruc: e.target.value }))} placeholder="12.345.678" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>DV</Label>
+                  <Input value={form.ruc_dv} onChange={(e) => setForm((f) => ({ ...f, ruc_dv: e.target.value }))} maxLength={1} placeholder="K" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono</Label>
+                <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+56 9 1234 5678" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Número de cuenta bancaria</Label>
+                <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+              </div>
               <div className="space-y-1.5">
                 <Label>Módulos en los que atiende</Label>
                 <div className="flex flex-wrap gap-1.5">
@@ -269,6 +318,11 @@ const Doctores = () => {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground">Sede: {doc.branch}</p>
+              {(doc.email || doc.phone) && (
+                <p className="text-xs text-muted-foreground">
+                  {[doc.email, doc.phone].filter(Boolean).join(" · ")}
+                </p>
+              )}
               <div className="flex gap-2 mt-auto">
                 <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => openEdit(doc.id)}>
                   <Pencil className="w-3 h-3" /> Editar
@@ -342,6 +396,28 @@ const Doctores = () => {
                   </SelectContent>
                 </Select>
               )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>RUC</Label>
+                <Input value={form.ruc} onChange={(e) => setForm((f) => ({ ...f, ruc: e.target.value }))} placeholder="12.345.678" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>DV</Label>
+                <Input value={form.ruc_dv} onChange={(e) => setForm((f) => ({ ...f, ruc_dv: e.target.value }))} maxLength={1} placeholder="K" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Correo electrónico</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@ejemplo.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Teléfono</Label>
+              <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+56 9 1234 5678" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Número de cuenta bancaria</Label>
+              <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
             </div>
             <div className="space-y-1.5">
               <Label>Módulos en los que atiende</Label>

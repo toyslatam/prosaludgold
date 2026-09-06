@@ -192,6 +192,11 @@ export type Database = {
           specialty: string
           updated_at: string
           modules_enabled: string[]
+          ruc: string | null
+          ruc_dv: string | null
+          email: string | null
+          phone: string | null
+          bank_account: string | null
         }
         Insert: {
           available?: boolean
@@ -202,6 +207,11 @@ export type Database = {
           specialty: string
           updated_at?: string
           modules_enabled?: string[]
+          ruc?: string | null
+          ruc_dv?: string | null
+          email?: string | null
+          phone?: string | null
+          bank_account?: string | null
         }
         Update: {
           available?: boolean
@@ -212,6 +222,11 @@ export type Database = {
           specialty?: string
           updated_at?: string
           modules_enabled?: string[]
+          ruc?: string | null
+          ruc_dv?: string | null
+          email?: string | null
+          phone?: string | null
+          bank_account?: string | null
         }
         Relationships: []
       }
