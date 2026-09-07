@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { getProcedureById } from "@/lib/agenda/procedures";
+import { buildPayrollSplit } from "@/lib/payroll";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
 import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
 import { Button } from "@/components/ui/button";
@@ -89,28 +90,28 @@ const AtencionClinica = () => {
         }
       }
 
-      // Comisión automática: % del profesional sobre el valor de catálogo
-      // de los procedimientos/servicios cargados en esta atención. Si
-      // ninguno tiene precio de catálogo, no hay nada que repartir.
+      // Comisión automática: % del profesional sobre el monto realmente
+      // cobrado en esta atención (precio editado por línea, o el de
+      // catálogo si no se ajustó). Genera ambas filas: profesional y clínica.
       const doctor = doctorsData.find((d) => d.id === encounter.professionalId);
       const grossAmount = encounter.procedures.reduce((sum, p) => {
         const proc = getProcedureById(vertical, p.procedureId);
-        return sum + (proc?.priceNew ?? proc?.price ?? 0);
+        return sum + (p.price ?? proc?.priceNew ?? proc?.price ?? 0);
       }, 0);
       if (doctor && grossAmount > 0) {
         const percentage = Number(doctor.commission_percentage ?? 60);
-        const total = Math.round(((grossAmount * percentage) / 100) * 100) / 100;
+        const notes = `Auto: Atención #${encounter.id.slice(-6)} · ${patientNameById.get(encounter.patientId) ?? "Paciente"}`;
+        const [doctorEntry, clinicEntry] = buildPayrollSplit({
+          doctor_id: doctor.id,
+          period: format(new Date(), "yyyy-MM"),
+          sessions: 1,
+          gross_amount: grossAmount,
+          doctorPercentage: percentage,
+          notes,
+        });
         try {
-          await insertPayrollEntry.mutateAsync({
-            doctor_id: doctor.id,
-            period: format(new Date(), "yyyy-MM"),
-            percentage,
-            sessions: 1,
-            gross_amount: grossAmount,
-            total_amount: total,
-            status: "pendiente",
-            notes: `Auto: Atención #${encounter.id.slice(-6)} · ${patientNameById.get(encounter.patientId) ?? "Paciente"}`,
-          });
+          await insertPayrollEntry.mutateAsync(doctorEntry);
+          await insertPayrollEntry.mutateAsync(clinicEntry);
         } catch {
           toast.error("No se pudo generar la comisión de esta atención.");
         }

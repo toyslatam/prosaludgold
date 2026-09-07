@@ -476,7 +476,11 @@ export function CareEncounterForm({
                 value={proc.procedureId}
                 onValueChange={(v) => {
                   const p = getProcedureById(vertical, v);
-                  updateProcedure(proc.id, { procedureId: v, name: p?.name ?? "" });
+                  updateProcedure(proc.id, {
+                    procedureId: v,
+                    name: p?.name ?? "",
+                    price: p?.priceNew ?? p?.price ?? proc.price,
+                  });
                 }}
               >
                 <SelectTrigger className="flex-1 min-w-[180px]">
@@ -498,6 +502,17 @@ export function CareEncounterForm({
                   onChange={(e) => updateProcedure(proc.id, { zone: e.target.value })}
                 />
               )}
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Monto cobrado"
+                className="w-36"
+                value={proc.price ?? ""}
+                onChange={(e) =>
+                  updateProcedure(proc.id, { price: e.target.value ? Number(e.target.value) : undefined })
+                }
+              />
               <Button
                 type="button"
                 variant="ghost"

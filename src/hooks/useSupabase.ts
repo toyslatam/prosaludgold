@@ -61,6 +61,8 @@ export type PayrollEntry = {
   gross_amount: number;
   total_amount: number;
   status: "pendiente" | "liquidado";
+  /** A quién pertenece esta fila: el profesional o la clínica (su contraparte). */
+  party: "doctor" | "clinic";
   notes: string | null;
   created_at: string;
   updated_at: string;

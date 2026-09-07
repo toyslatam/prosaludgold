@@ -14,6 +14,8 @@ export interface ProcedureItem {
   name: string;
   /** Opcional: pieza/zona dental (dental), etc. */
   zone?: string;
+  /** Monto realmente cobrado por este procedimiento/servicio (precargado del catálogo, editable). */
+  price?: number;
 }
 
 export interface InventoryUsedItem {
