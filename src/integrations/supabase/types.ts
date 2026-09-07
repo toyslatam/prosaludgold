@@ -197,6 +197,7 @@ export type Database = {
           email: string | null
           phone: string | null
           bank_account: string | null
+          commission_percentage: number
         }
         Insert: {
           available?: boolean
@@ -212,6 +213,7 @@ export type Database = {
           email?: string | null
           phone?: string | null
           bank_account?: string | null
+          commission_percentage?: number
         }
         Update: {
           available?: boolean
@@ -227,6 +229,7 @@ export type Database = {
           email?: string | null
           phone?: string | null
           bank_account?: string | null
+          commission_percentage?: number
         }
         Relationships: []
       }

@@ -3,10 +3,11 @@ import { useDemo } from "@/contexts/DemoContext";
 import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients } from "@/lib/patients/repository";
-import { useDoctors, useInventoryItems, useUpdateInventoryItem } from "@/hooks/useSupabase";
+import { useDoctors, useInventoryItems, useUpdateInventoryItem, useInsertPayrollEntry } from "@/hooks/useSupabase";
 import { toast } from "sonner";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
+import { getProcedureById } from "@/lib/agenda/procedures";
 import { CareEncounterForm } from "@/components/encounters/CareEncounterForm";
 import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const AtencionClinica = () => {
 
   const { data: inventoryData = [] } = useInventoryItems();
   const updateInventoryItem = useUpdateInventoryItem();
+  const insertPayrollEntry = useInsertPayrollEntry();
   const inventoryItems = useMemo(
     () =>
       inventoryData.map((i) => ({
@@ -72,16 +74,45 @@ const AtencionClinica = () => {
 
   const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
     const encounter = saveEncounter(payload);
-    if (payload.status === "COMPLETED" && payload.inventoryUsed?.length) {
-      for (const used of encounter.inventoryUsed) {
-        if (!used.productId || used.quantity <= 0) continue;
-        const current = inventoryData.find((i) => i.id === used.productId);
-        if (!current) continue;
-        const newStock = Math.max(0, current.stock - used.quantity);
+    if (payload.status === "COMPLETED") {
+      if (payload.inventoryUsed?.length) {
+        for (const used of encounter.inventoryUsed) {
+          if (!used.productId || used.quantity <= 0) continue;
+          const current = inventoryData.find((i) => i.id === used.productId);
+          if (!current) continue;
+          const newStock = Math.max(0, current.stock - used.quantity);
+          try {
+            await updateInventoryItem.mutateAsync({ id: used.productId, patch: { stock: newStock } });
+          } catch {
+            toast.error(`No se pudo descontar stock de "${used.name}".`);
+          }
+        }
+      }
+
+      // Comisión automática: % del profesional sobre el valor de catálogo
+      // de los procedimientos/servicios cargados en esta atención. Si
+      // ninguno tiene precio de catálogo, no hay nada que repartir.
+      const doctor = doctorsData.find((d) => d.id === encounter.professionalId);
+      const grossAmount = encounter.procedures.reduce((sum, p) => {
+        const proc = getProcedureById(vertical, p.procedureId);
+        return sum + (proc?.priceNew ?? proc?.price ?? 0);
+      }, 0);
+      if (doctor && grossAmount > 0) {
+        const percentage = Number(doctor.commission_percentage ?? 60);
+        const total = Math.round(((grossAmount * percentage) / 100) * 100) / 100;
         try {
-          await updateInventoryItem.mutateAsync({ id: used.productId, patch: { stock: newStock } });
+          await insertPayrollEntry.mutateAsync({
+            doctor_id: doctor.id,
+            period: format(new Date(), "yyyy-MM"),
+            percentage,
+            sessions: 1,
+            gross_amount: grossAmount,
+            total_amount: total,
+            status: "pendiente",
+            notes: `Auto: Atención #${encounter.id.slice(-6)} · ${patientNameById.get(encounter.patientId) ?? "Paciente"}`,
+          });
         } catch {
-          toast.error(`No se pudo descontar stock de "${used.name}".`);
+          toast.error("No se pudo generar la comisión de esta atención.");
         }
       }
     }

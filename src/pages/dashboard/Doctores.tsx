@@ -30,9 +30,11 @@ type DoctorForm = {
   email: string;
   phone: string;
   bank_account: string;
+  commission_percentage: string;
 };
 
 const DEFAULT_PHONE_PREFIX = "+56 ";
+const DEFAULT_COMMISSION = "60";
 
 const EMPTY_FORM: DoctorForm = {
   name: "",
@@ -44,6 +46,7 @@ const EMPTY_FORM: DoctorForm = {
   email: "",
   phone: DEFAULT_PHONE_PREFIX,
   bank_account: "",
+  commission_percentage: DEFAULT_COMMISSION,
 };
 
 const Doctores = () => {
@@ -106,6 +109,7 @@ const Doctores = () => {
       email: doc.email ?? "",
       phone: doc.phone ?? DEFAULT_PHONE_PREFIX,
       bank_account: doc.bank_account ?? "",
+      commission_percentage: String(doc.commission_percentage ?? DEFAULT_COMMISSION),
     });
     setFormModules(doc.modules_enabled?.length ? (doc.modules_enabled as VerticalKey[]) : enabledModules);
     setEditingId(id);
@@ -115,9 +119,17 @@ const Doctores = () => {
     e.preventDefault();
     if (!form.name.trim() || !form.specialty.trim()) return;
 
+    const commissionValue = parseFloat(form.commission_percentage);
+    const payload = {
+      ...form,
+      commission_percentage: Number.isFinite(commissionValue)
+        ? Math.min(100, Math.max(0, commissionValue))
+        : parseFloat(DEFAULT_COMMISSION),
+    };
+
     if (editingId) {
       update.mutate(
-        { id: editingId, patch: { ...form, modules_enabled: formModules } },
+        { id: editingId, patch: { ...payload, modules_enabled: formModules } },
         {
           onSuccess: () => { toast.success(`${professionalLabel} actualizado`); setEditingId(null); setForm(EMPTY_FORM); },
           onError: (err) => toast.error(err.message),
@@ -125,7 +137,7 @@ const Doctores = () => {
       );
     } else {
       insert.mutate(
-        { ...form, branch: form.branch || "Principal", modules_enabled: formModules },
+        { ...payload, branch: form.branch || "Principal", modules_enabled: formModules },
         {
           onSuccess: () => { toast.success(`${professionalLabel} registrado`); setOpenNew(false); setForm(EMPTY_FORM); },
           onError: (err) => toast.error(err.message),
@@ -243,6 +255,18 @@ const Doctores = () => {
               <div className="space-y-1.5">
                 <Label>Número de cuenta bancaria</Label>
                 <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Comisión del profesional (%)</Label>
+                <Input
+                  type="number" min="0" max="100" step="1"
+                  value={form.commission_percentage}
+                  onChange={(e) => setForm((f) => ({ ...f, commission_percentage: e.target.value }))}
+                  placeholder={DEFAULT_COMMISSION}
+                />
+                <p className="text-xs text-muted-foreground">
+                  % que se lleva {professionalLabel.toLowerCase()} por atención; el resto queda para la clínica.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Módulos en los que atiende</Label>
@@ -418,6 +442,18 @@ const Doctores = () => {
             <div className="space-y-1.5">
               <Label>Número de cuenta bancaria</Label>
               <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Comisión del profesional (%)</Label>
+              <Input
+                type="number" min="0" max="100" step="1"
+                value={form.commission_percentage}
+                onChange={(e) => setForm((f) => ({ ...f, commission_percentage: e.target.value }))}
+                placeholder={DEFAULT_COMMISSION}
+              />
+              <p className="text-xs text-muted-foreground">
+                % que se lleva {professionalLabel.toLowerCase()} por atención; el resto queda para la clínica.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Módulos en los que atiende</Label>
