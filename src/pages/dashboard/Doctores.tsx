@@ -168,7 +168,7 @@ const Doctores = () => {
               <Plus className="w-4 h-4" /> Nuevo {professionalLabel.toLowerCase()}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Registrar {professionalLabel}</DialogTitle></DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
@@ -343,7 +343,7 @@ const Doctores = () => {
 
       {/* Edit dialog */}
       <Dialog open={!!editingId} onOpenChange={(o) => { if (!o) { setEditingId(null); setForm(EMPTY_FORM); } }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar {professionalLabel}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
