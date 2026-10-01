@@ -210,15 +210,15 @@ export function unarchiveProcedure(vertical: VerticalKey, id: string): void {
 }
 
 /** Verifica si el procedimiento está en uso (citas, atenciones, etc.). */
-export function canDeleteProcedure(procedureId: string, _vertical: VerticalKey): { canDelete: boolean; reason?: string } {
+export async function canDeleteProcedure(procedureId: string, _vertical: VerticalKey): Promise<{ canDelete: boolean; reason?: string }> {
   const appointments = getAppointmentsRaw();
   const inAppointments = appointments.some((a: { procedureId?: string | null }) => a.procedureId === procedureId);
   if (inAppointments) {
     return { canDelete: false, reason: "Citas/Agenda" };
   }
 
-  const encounters = getEncounters();
-  const inEncounters = encounters.some((e: { procedures: { procedureId: string }[] }) =>
+  const encounters = await getEncounters();
+  const inEncounters = encounters.some((e) =>
     e.procedures?.some((p) => p.procedureId === procedureId)
   );
   if (inEncounters) {

@@ -108,7 +108,21 @@ export default function Procedimientos() {
 
   const handleRequestDelete = (id: string) => setDeletingId(id);
   const deletingProc = deletingId ? procedures.find((p) => p.id === deletingId) : null;
-  const deleteCheck = deletingId ? canDeleteProcedure(deletingId, v) : null;
+  const [deleteCheck, setDeleteCheck] = useState<{ canDelete: boolean; reason?: string } | null>(null);
+
+  useEffect(() => {
+    if (!deletingId) {
+      setDeleteCheck(null);
+      return;
+    }
+    let cancelled = false;
+    canDeleteProcedure(deletingId, v).then((result) => {
+      if (!cancelled) setDeleteCheck(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deletingId, v]);
 
   const handleConfirmDelete = () => {
     if (!deletingId) return;
