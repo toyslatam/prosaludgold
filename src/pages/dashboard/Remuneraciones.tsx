@@ -7,6 +7,8 @@ import {
   useInsertPayrollEntry,
   useUpdatePayrollEntry,
   useDeletePayrollEntry,
+  useSyncToQuickbooks,
+  useQuickbooksConnection,
 } from "@/hooks/useSupabase";
 import { buildPayrollSplit } from "@/lib/payroll";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,8 @@ const Remuneraciones = () => {
   const insert = useInsertPayrollEntry();
   const update = useUpdatePayrollEntry();
   const remove = useDeletePayrollEntry();
+  const syncToQuickbooks = useSyncToQuickbooks();
+  const { data: qbConnection } = useQuickbooksConnection();
 
   const periodLabel = useMemo(() => {
     const [y, m] = period.split("-");
@@ -84,11 +88,17 @@ const Remuneraciones = () => {
     });
 
     insert.mutate(doctorEntry, {
-      onSuccess: () => {
+      onSuccess: (createdDoctorEntry) => {
         insert.mutate(clinicEntry, {
           onSuccess: () => { toast.success("Liquidación registrada (profesional + clínica)"); setOpen(false); setForm(EMPTY); },
           onError: (err) => toast.error(`Se registró la parte del profesional, pero no la de la clínica: ${err.message}`),
         });
+        if (qbConnection) {
+          syncToQuickbooks.mutate(
+            { entity: "payroll_entry", id: createdDoctorEntry.id },
+            { onError: () => toast.error("No se pudo sincronizar la comisión con QuickBooks (sí quedó registrada)") }
+          );
+        }
       },
       onError: (err) => toast.error(err.message),
     });

@@ -3,7 +3,8 @@ import { useDemo } from "@/contexts/DemoContext";
 import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients } from "@/lib/patients/repository";
-import { useDoctors, useInventoryItems, useUpdateInventoryItem, useInsertPayrollEntry } from "@/hooks/useSupabase";
+import type { CareEncounter } from "@/types/careEncounter";
+import { useDoctors, useInventoryItems, useUpdateInventoryItem, useInsertPayrollEntry, useSyncToQuickbooks, useQuickbooksConnection } from "@/hooks/useSupabase";
 import { toast } from "sonner";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
@@ -22,7 +23,8 @@ const AtencionClinica = () => {
   const config = useMemo(() => getEncounterFormConfig(vertical), [vertical]);
   const [showForm, setShowForm] = useState(false);
 
-  const encounters = getEncounters(vertical);
+  const [encounters, setEncounters] = useState<CareEncounter[]>([]);
+  const [encountersRefresh, setEncountersRefresh] = useState(0);
   const [patients, setPatients] = useState<{ id: string; name: string }[]>([]);
   const { data: doctorsData = [] } = useDoctors(vertical);
   const doctors = useMemo(
@@ -33,6 +35,8 @@ const AtencionClinica = () => {
   const { data: inventoryData = [] } = useInventoryItems();
   const updateInventoryItem = useUpdateInventoryItem();
   const insertPayrollEntry = useInsertPayrollEntry();
+  const syncToQuickbooks = useSyncToQuickbooks();
+  const { data: qbConnection } = useQuickbooksConnection();
   const inventoryItems = useMemo(
     () =>
       inventoryData.map((i) => ({
@@ -52,6 +56,12 @@ const AtencionClinica = () => {
       .then((data) => setPatients(data.map((p) => ({ id: p.id, name: p.name }))))
       .catch(() => toast.error("No se pudieron cargar los pacientes."));
   }, [vertical]);
+
+  useEffect(() => {
+    getEncounters(vertical)
+      .then(setEncounters)
+      .catch(() => toast.error("No se pudieron cargar las atenciones."));
+  }, [vertical, encountersRefresh]);
 
   const patientNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -73,8 +83,15 @@ const AtencionClinica = () => {
       .catch(() => toast.error("No se pudieron cargar las ubicaciones."));
   }, [vertical, locationsRefresh]);
 
-  const handleSave = async (payload: Omit<import("@/types/careEncounter").CareEncounter, "id" | "createdAt" | "updatedAt">) => {
-    const encounter = saveEncounter(payload);
+  const handleSave = async (payload: Omit<CareEncounter, "id" | "createdAt" | "updatedAt">) => {
+    let encounter: CareEncounter;
+    try {
+      encounter = await saveEncounter(payload);
+    } catch {
+      toast.error("No se pudo guardar la atención. Intenta de nuevo.");
+      return;
+    }
+    setEncountersRefresh((r) => r + 1);
     if (payload.status === "COMPLETED") {
       if (payload.inventoryUsed?.length) {
         for (const used of encounter.inventoryUsed) {
@@ -110,8 +127,14 @@ const AtencionClinica = () => {
           notes,
         });
         try {
-          await insertPayrollEntry.mutateAsync(doctorEntry);
+          const createdDoctorEntry = await insertPayrollEntry.mutateAsync(doctorEntry);
           await insertPayrollEntry.mutateAsync(clinicEntry);
+          if (qbConnection) {
+            syncToQuickbooks.mutate(
+              { entity: "payroll_entry", id: createdDoctorEntry.id },
+              { onError: () => toast.error("No se pudo sincronizar la comisión con QuickBooks (sí quedó registrada)") }
+            );
+          }
         } catch {
           toast.error("No se pudo generar la comisión de esta atención.");
         }

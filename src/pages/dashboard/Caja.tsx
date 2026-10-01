@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { useCashEntries, useInsertCashEntry } from "@/hooks/useSupabase";
+import { useCashEntries, useInsertCashEntry, useSyncToQuickbooks, useQuickbooksConnection } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,8 @@ const Caja = () => {
 
   const { data: entries = [], isLoading } = useCashEntries();
   const insert = useInsertCashEntry();
+  const syncToQuickbooks = useSyncToQuickbooks();
+  const { data: qbConnection } = useQuickbooksConnection();
   const { clinicConfig } = useAppConfig();
 
   const shown = entries.filter((e) => !filterDate || e.date === filterDate);
@@ -50,7 +52,17 @@ const Caja = () => {
         date: today,
       },
       {
-        onSuccess: () => { toast.success("Movimiento registrado"); setOpen(false); setForm(EMPTY_FORM); },
+        onSuccess: (created) => {
+          toast.success("Movimiento registrado");
+          setOpen(false);
+          setForm(EMPTY_FORM);
+          if (qbConnection && created.type === "ingreso") {
+            syncToQuickbooks.mutate(
+              { entity: "cash_entry", id: created.id },
+              { onError: () => toast.error("No se pudo sincronizar con QuickBooks (el movimiento sí quedó registrado)") }
+            );
+          }
+        },
         onError: (err) => toast.error(err.message),
       }
     );

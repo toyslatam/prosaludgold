@@ -8,6 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuickbooksConnection, useDisconnectQuickbooks } from "@/hooks/useSupabase";
 import {
   Building2,
   MapPin,
@@ -20,7 +23,78 @@ import {
   Check,
   X,
   Loader2,
+  Plug,
+  Unplug,
 } from "lucide-react";
+
+function QuickbooksSection() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: connection, isLoading } = useQuickbooksConnection();
+  const disconnect = useDisconnectQuickbooks();
+  const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    const qb = searchParams.get("qb");
+    if (!qb) return;
+    if (qb === "connected") toast.success("QuickBooks conectado correctamente");
+    if (qb === "error") toast.error(`No se pudo conectar QuickBooks (${searchParams.get("qb_message") ?? "error"})`);
+    const next = new URLSearchParams(searchParams);
+    next.delete("qb");
+    next.delete("qb_message");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{ url: string }>("quickbooks-oauth-start");
+      if (error || !data?.url) throw error ?? new Error("Respuesta inválida");
+      window.location.href = data.url;
+    } catch {
+      toast.error("No se pudo iniciar la conexión con QuickBooks");
+      setConnecting(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    disconnect.mutate(undefined, {
+      onSuccess: () => toast.success("QuickBooks desconectado"),
+      onError: () => toast.error("No se pudo desconectar"),
+    });
+  };
+
+  return (
+    <SectionCard title="Integraciones" icon={Plug}>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p className="font-medium text-sm">QuickBooks Online</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sincroniza cobros (ingresos) como Sales Receipts y comisiones de doctores como Bills.
+          </p>
+          {connection && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Conectado · empresa {connection.realm_id}
+            </p>
+          )}
+        </div>
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : connection ? (
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleDisconnect} disabled={disconnect.isPending}>
+            {disconnect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unplug className="w-4 h-4" />}
+            Desconectar
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-2" onClick={handleConnect} disabled={connecting}>
+            {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plug className="w-4 h-4" />}
+            Conectar QuickBooks
+          </Button>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
 
 const MODULE_LABELS: Record<VerticalKey, string> = {
   dental: "Odontología",
@@ -567,6 +641,8 @@ const Configuracion = () => {
           ))}
         </div>
       </SectionCard>
+
+      <QuickbooksSection />
 
       {/* Save button */}
       <div className="flex justify-end pb-6">

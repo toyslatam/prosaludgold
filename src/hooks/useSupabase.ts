@@ -527,3 +527,51 @@ export const useInsertTreatment = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["treatments"] }),
   });
 };
+
+// ── QUICKBOOKS ────────────────────────────────────────────────
+
+export interface QuickbooksConnection {
+  user_id: string;
+  realm_id: string;
+  access_token_expires_at: string;
+  refresh_token_expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const useQuickbooksConnection = () =>
+  useQuery({
+    queryKey: ["quickbooks_connection"],
+    queryFn: async (): Promise<QuickbooksConnection | null> => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+      const { data, error } = await anyFrom("quickbooks_connections")
+        .select("user_id, realm_id, access_token_expires_at, refresh_token_expires_at, created_at, updated_at")
+        .eq("user_id", userData.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+export const useDisconnectQuickbooks = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Sin sesión");
+      const { error } = await anyFrom("quickbooks_connections").delete().eq("user_id", userData.user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quickbooks_connection"] }),
+  });
+};
+
+export const useSyncToQuickbooks = () =>
+  useMutation({
+    mutationFn: async (input: { entity: "cash_entry" | "payroll_entry"; id: string }) => {
+      const { data, error } = await supabase.functions.invoke("quickbooks-sync", { body: input });
+      if (error) throw error;
+      return data as { synced?: boolean; skipped?: boolean; error?: string };
+    },
+  });
