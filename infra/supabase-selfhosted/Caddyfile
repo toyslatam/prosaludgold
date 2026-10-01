@@ -1,0 +1,7 @@
+# Reverse proxy TLS para el stack Supabase self-hosted.
+# Reemplaza TU_DOMINIO por tu subdominio real (ej. supabase.prosaludgold.com)
+# y coloca este archivo en /etc/caddy/Caddyfile del VPS.
+
+TU_DOMINIO {
+	reverse_proxy localhost:8000
+}
