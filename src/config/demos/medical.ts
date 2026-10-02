@@ -141,5 +141,6 @@ export const medicalConfig: VerticalConfig = {
     { pathKey: "experiencia", label: "Experiencia Paciente" },
     { pathKey: "ia", label: "Hub de IA" },
     { pathKey: "configuracion", label: "Configuración" },
+    { pathKey: "usuarios", label: "Usuarios y Permisos" },
   ],
 };

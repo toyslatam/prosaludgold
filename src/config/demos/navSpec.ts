@@ -19,4 +19,5 @@ export const PATH_KEY_TO_PATH: Record<string, string> = {
   experiencia: "experiencia",
   ia: "ia",
   configuracion: "configuracion",
+  usuarios: "configuracion/usuarios",
 };

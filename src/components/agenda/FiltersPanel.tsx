@@ -83,41 +83,46 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
           className="max-w-[220px]"
         />
         <FilterCombobox
-          className="w-[190px]"
+          className="w-[170px]"
           value={filters.branch || "all"}
           onChange={(v) => update({ branch: v })}
           allLabel="Todas las sucursales"
+          placeholder="Sucursal"
           searchPlaceholder="Buscar sucursal…"
           options={branches.map((b) => ({ value: b, label: shortBranchLabel(b), searchText: b }))}
         />
         <FilterCombobox
-          className="w-[190px]"
+          className="w-[160px]"
           value={filters.chairId || "all"}
           onChange={(v) => update({ chairId: v })}
           allLabel="Todas las cabinas"
+          placeholder="Cabina"
           searchPlaceholder="Buscar cabina…"
           options={chairs.map((c) => ({ value: c.id, label: c.name, searchText: c.branch }))}
         />
         <FilterCombobox
-          className="w-[200px]"
+          className="w-[170px]"
           value={filters.doctorId}
           onChange={(v) => update({ doctorId: v })}
           allLabel="Todos los doctores"
+          placeholder="Doctor"
           searchPlaceholder="Buscar doctor…"
           options={doctors.map((d) => ({ value: d.id, label: d.name, sublabel: d.specialty, searchText: d.specialty }))}
         />
         <FilterCombobox
-          className="w-[180px]"
+          className="w-[150px]"
           value={filters.status || "all"}
           onChange={(v) => update({ status: v === "all" ? "" : (v as AppointmentStatus) })}
           allLabel="Todos los estados"
+          placeholder="Estado"
           searchPlaceholder="Buscar estado…"
           options={ALL_STATUSES.map((s) => ({ value: s, label: statusLabels[s] }))}
         />
         <FilterCombobox
-          className="w-[160px]"
+          className="w-[140px]"
           value={filters.situation || "all"}
           onChange={(v) => update({ situation: v === "all" ? "" : (v as SituationFinancial) })}
+          placeholder="Situación"
           allLabel="Todas"
           searchPlaceholder="Buscar situación…"
           options={ALL_SITUATIONS.map((s) => ({ value: s, label: SITUATION_LABELS[s] }))}

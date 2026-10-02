@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -20,11 +20,13 @@ import {
   LogOut,
   ClipboardList,
   FileText,
+  ShieldCheck,
 } from "lucide-react";
 import { useDemo, useDemoConfig } from "@/contexts/DemoContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { PATH_KEY_TO_PATH } from "@/config/demos/navSpec";
 import { supabase } from "@/integrations/supabase/client";
+import { initials } from "@/lib/utils";
 import ProSaludLogo from "@/components/ProSaludLogo";
 import { ModuleSwitcher } from "@/components/ModuleSwitcher";
 
@@ -45,15 +47,17 @@ const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string 
   experiencia: Heart,
   ia: Brain,
   configuracion: Settings,
+  usuarios: ShieldCheck,
 };
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const { basePath } = useDemo();
-  const { enabledModules } = useAppConfig();
+  const { enabledModules, membership, canAccessPathKey } = useAppConfig();
   const config = useDemoConfig(enabledModules);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -66,14 +70,34 @@ const DashboardLayout = () => {
     navigate("/");
   };
 
-  const userInitials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "AD";
+  const userInitials = membership
+    ? initials(membership.displayName)
+    : userEmail
+      ? userEmail.slice(0, 2).toUpperCase()
+      : "AD";
 
-  const sidebarItems = config.navItems.map((item) => {
-    const pathSegment = PATH_KEY_TO_PATH[item.pathKey] ?? item.pathKey;
-    const path = pathSegment ? `${basePath}/${pathSegment}` : basePath;
-    const Icon = PATH_KEY_TO_ICON[item.pathKey];
-    return { label: item.label, path, icon: Icon ?? LayoutDashboard };
-  });
+  const sidebarItems = config.navItems
+    .filter((item) => item.pathKey !== "usuarios" || !membership) // solo el dueño administra usuarios
+    .filter((item) => canAccessPathKey(item.pathKey))
+    .map((item) => {
+      const pathSegment = PATH_KEY_TO_PATH[item.pathKey] ?? item.pathKey;
+      const path = pathSegment ? `${basePath}/${pathSegment}` : basePath;
+      const Icon = PATH_KEY_TO_ICON[item.pathKey];
+      return { label: item.label, path, icon: Icon ?? LayoutDashboard };
+    });
+
+  // Si un miembro restringido entra directo a una URL que no tiene permitida,
+  // lo mandamos al primer módulo que sí puede ver (o al inicio).
+  if (membership) {
+    const currentSegment = location.pathname.slice(basePath.length).replace(/^\//, "").split("/")[0];
+    const currentPathKey =
+      Object.entries(PATH_KEY_TO_PATH).find(([, seg]) => seg === currentSegment)?.[0] ??
+      (currentSegment || "inicio");
+    if (!canAccessPathKey(currentPathKey)) {
+      const fallback = sidebarItems[0]?.path ?? basePath;
+      return <Navigate to={fallback} replace />;
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -142,7 +166,9 @@ const DashboardLayout = () => {
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-xs font-semibold text-primary">{userInitials}</span>
             </div>
-            <span className="text-sm font-medium hidden sm:block max-w-[180px] truncate">{userEmail}</span>
+            <span className="text-sm font-medium hidden sm:block max-w-[180px] truncate">
+              {membership?.displayName ?? userEmail}
+            </span>
           </div>
         </header>
 

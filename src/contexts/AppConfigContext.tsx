@@ -39,12 +39,25 @@ export interface Sede {
   updated_at: string;
 }
 
+export interface ClinicMembership {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+  allowedModules: string[];
+  mustChangePassword: boolean;
+}
+
 interface AppConfigContextValue {
   clinicConfig: ClinicConfig | null;
   sedes: Sede[];
   enabledModules: VerticalKey[];
   isOnboardingComplete: boolean;
   isLoading: boolean;
+  /** null = dueño de la clínica (acceso total). Si no es null, el usuario es
+   *  staff vinculado y solo debe ver estos módulos (más "inicio", siempre libre). */
+  membership: ClinicMembership | null;
+  canAccessPathKey: (pathKey: string) => boolean;
   reload: () => Promise<void>;
   saveConfig: (data: Partial<Omit<ClinicConfig, "id" | "user_id" | "created_at" | "updated_at">>) => Promise<void>;
   saveSede: (sede: Partial<Sede> & { name: string }) => Promise<void>;
@@ -58,9 +71,13 @@ interface AppConfigContextValue {
 
 const AppConfigContext = createContext<AppConfigContextValue | null>(null);
 
+/** Módulos que un miembro restringido siempre puede ver, sin importar sus allowed_modules. */
+const ALWAYS_ALLOWED_PATH_KEYS = ["inicio"];
+
 export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [clinicConfig, setClinicConfig] = useState<ClinicConfig | null>(null);
   const [sedes, setSedes] = useState<Sede[]>([]);
+  const [membership, setMembership] = useState<ClinicMembership | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadConfig = useCallback(async () => {
@@ -69,7 +86,9 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
-      const { data: config, error } = await supabase
+      let config: ClinicConfig | null = null;
+
+      const { data: ownConfig, error } = await supabase
         .from("clinic_config")
         .select("*")
         .eq("user_id", user.id)
@@ -83,8 +102,40 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (ownConfig) {
+        config = ownConfig as ClinicConfig;
+        setMembership(null);
+      } else {
+        // No es dueño: ¿es staff vinculado a una clínica?
+        const { data: memberRow, error: memberError } = await supabase
+          .from("clinic_members")
+          .select("*, clinic_config:clinic_config_id(*)")
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+
+        if (memberError) {
+          console.error("Error cargando clinic_members:", memberError);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const row = memberRow as any;
+        if (row?.clinic_config) {
+          config = row.clinic_config as ClinicConfig;
+          setMembership({
+            id: row.id,
+            username: row.username,
+            displayName: row.display_name,
+            role: row.role,
+            allowedModules: row.allowed_modules ?? [],
+            mustChangePassword: row.must_change_password,
+          });
+        } else {
+          setMembership(null);
+        }
+      }
+
       if (config) {
-        setClinicConfig(config as ClinicConfig);
+        setClinicConfig(config);
 
         const { data: sedesData, error: sedesError } = await supabase
           .from("sedes")
@@ -208,6 +259,15 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
 
   const isOnboardingComplete = clinicConfig?.onboarding_complete ?? false;
 
+  const canAccessPathKey = useCallback(
+    (pathKey: string) => {
+      if (!membership) return true; // dueño: acceso total
+      if (ALWAYS_ALLOWED_PATH_KEYS.includes(pathKey)) return true;
+      return membership.allowedModules.includes(pathKey);
+    },
+    [membership],
+  );
+
   return (
     <AppConfigContext.Provider
       value={{
@@ -216,6 +276,8 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
         enabledModules,
         isOnboardingComplete,
         isLoading,
+        membership,
+        canAccessPathKey,
         reload: loadConfig,
         saveConfig,
         saveSede,

@@ -140,5 +140,6 @@ export const spaConfig: VerticalConfig = {
     { pathKey: "experiencia", label: "Experiencia Cliente" },
     { pathKey: "ia", label: "Hub de IA" },
     { pathKey: "configuracion", label: "Configuración" },
+    { pathKey: "usuarios", label: "Usuarios y Permisos" },
   ],
 };

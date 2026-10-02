@@ -36,6 +36,7 @@ import Reportes from "./pages/dashboard/Reportes";
 import ExperienciaPaciente from "./pages/dashboard/ExperienciaPaciente";
 import IAHub from "./pages/dashboard/IAHub";
 import Configuracion from "./pages/dashboard/Configuracion";
+import UsuariosPermisos from "./pages/dashboard/UsuariosPermisos";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +121,7 @@ const App = () => {
               <Route path="experiencia" element={<ExperienciaPaciente />} />
               <Route path="ia" element={<IAHub />} />
               <Route path="configuracion" element={<Configuracion />} />
+              <Route path="configuracion/usuarios" element={<UsuariosPermisos />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
