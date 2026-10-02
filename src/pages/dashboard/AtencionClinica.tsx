@@ -4,7 +4,15 @@ import { getEncounterFormConfig } from "@/config/encounters";
 import { getEncounters, saveEncounter } from "@/lib/encounters/repository";
 import { getPatients } from "@/lib/patients/repository";
 import type { CareEncounter } from "@/types/careEncounter";
-import { useDoctors, useInventoryItems, useUpdateInventoryItem, useInsertPayrollEntry, useSyncToQuickbooks, useQuickbooksConnection } from "@/hooks/useSupabase";
+import {
+  useDoctors,
+  useInventoryItems,
+  useUpdateInventoryItem,
+  useInsertPayrollEntry,
+  useInsertCashEntry,
+  useSyncToQuickbooks,
+  useQuickbooksConnection,
+} from "@/hooks/useSupabase";
 import { toast } from "sonner";
 import { getSites } from "@/lib/agenda/sites";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
@@ -35,6 +43,7 @@ const AtencionClinica = () => {
   const { data: inventoryData = [] } = useInventoryItems();
   const updateInventoryItem = useUpdateInventoryItem();
   const insertPayrollEntry = useInsertPayrollEntry();
+  const insertCashEntry = useInsertCashEntry();
   const syncToQuickbooks = useSyncToQuickbooks();
   const { data: qbConnection } = useQuickbooksConnection();
   const inventoryItems = useMemo(
@@ -107,17 +116,42 @@ const AtencionClinica = () => {
         }
       }
 
-      // Comisión automática: % del profesional sobre el monto realmente
-      // cobrado en esta atención (precio editado por línea, o el de
-      // catálogo si no se ajustó). Genera ambas filas: profesional y clínica.
       const doctor = doctorsData.find((d) => d.id === encounter.professionalId);
       const grossAmount = encounter.procedures.reduce((sum, p) => {
         const proc = getProcedureById(vertical, p.procedureId);
         return sum + (p.price ?? proc?.priceNew ?? proc?.price ?? 0);
       }, 0);
+      const patientName = patientNameById.get(encounter.patientId) ?? "Paciente";
+
+      // Ingreso en Caja: el cobro de la atención no quedaba registrado en
+      // ningún lado, así que Caja siempre mostraba $0 aunque hubiera cobros.
+      if (grossAmount > 0) {
+        try {
+          const createdCashEntry = await insertCashEntry.mutateAsync({
+            type: "ingreso",
+            description: `Atención #${encounter.id.slice(-6)} · ${patientName}`,
+            amount: grossAmount,
+            method: null,
+            date: encounter.startAt.slice(0, 10),
+            patient_id: encounter.patientId || null,
+          });
+          if (qbConnection) {
+            syncToQuickbooks.mutate(
+              { entity: "cash_entry", id: createdCashEntry.id },
+              { onError: () => toast.error("No se pudo sincronizar el cobro con QuickBooks (sí quedó registrado)") }
+            );
+          }
+        } catch {
+          toast.error("No se pudo registrar el cobro de esta atención en Caja.");
+        }
+      }
+
+      // Comisión automática: % del profesional sobre el monto realmente
+      // cobrado en esta atención (precio editado por línea, o el de
+      // catálogo si no se ajustó). Genera ambas filas: profesional y clínica.
       if (doctor && grossAmount > 0) {
         const percentage = Number(doctor.commission_percentage ?? 60);
-        const notes = `Auto: Atención #${encounter.id.slice(-6)} · ${patientNameById.get(encounter.patientId) ?? "Paciente"}`;
+        const notes = `Auto: Atención #${encounter.id.slice(-6)} · ${patientName}`;
         const [doctorEntry, clinicEntry] = buildPayrollSplit({
           doctor_id: doctor.id,
           period: format(new Date(), "yyyy-MM"),

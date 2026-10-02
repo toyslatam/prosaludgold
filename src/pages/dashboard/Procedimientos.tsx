@@ -11,6 +11,7 @@ import {
 } from "@/lib/agenda/procedures";
 import { getCategories, addCategory, type ProcedureCategory } from "@/lib/agenda/procedureCategories";
 import { getDoctors } from "@/lib/agenda/repository";
+import { getProfessionalLabel } from "@/lib/professionals/label";
 import { useDemo } from "@/contexts/DemoContext";
 import { DoctorsMultiSelect } from "@/components/procedimientos/DoctorsMultiSelect";
 import { CategoryManagerModal } from "@/components/procedimientos/CategoryManagerModal";
@@ -67,6 +68,7 @@ const emptyProcedure: Omit<Procedure, "id"> = {
 export default function Procedimientos() {
   const { vertical } = useDemo();
   const v = vertical as VerticalKey;
+  const professionalLabelPlural = getProfessionalLabel(v).plural;
   const [procedures, setProcedures] = useState<Procedure[]>(() => getProcedures(v));
   const [categories, setCategories] = useState<ProcedureCategory[]>(() => getCategories(v));
   const [editing, setEditing] = useState<Procedure | null>(null);
@@ -204,7 +206,7 @@ export default function Procedimientos() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Precio</TableHead>
-                <TableHead>Doctores asignados</TableHead>
+                <TableHead>{professionalLabelPlural} asignados</TableHead>
                 <TableHead className="w-[100px]" />
               </TableRow>
             </TableHeader>
@@ -498,7 +500,7 @@ function ProcedureFormDialog({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Doctores asignados (varios)</Label>
+            <Label>{getProfessionalLabel(vertical).plural} asignados (varios)</Label>
             <p className="text-xs text-muted-foreground">
               Solo estos doctores aparecerán al elegir este procedimiento en una cita. Ninguno = todos.
             </p>

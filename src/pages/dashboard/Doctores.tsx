@@ -12,6 +12,7 @@ import { useDemo } from "@/contexts/DemoContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import type { VerticalKey } from "@/config/demos";
 import { getSpecialties } from "@/lib/professionals/specialties";
+import { getProfessionalLabel } from "@/lib/professionals/label";
 import { SpecialtyManagerModal } from "@/components/professionals/SpecialtyManagerModal";
 
 const MODULE_LABELS: Record<string, string> = {
@@ -84,7 +85,7 @@ const Doctores = () => {
     });
   };
 
-  const professionalLabel = vertical === "spa" ? "Terapeuta" : vertical === "medical" ? "Médico" : "Doctor";
+  const { singular: professionalLabel, plural: professionalLabelPlural } = getProfessionalLabel(vertical);
 
   const filtered = doctors.filter((d) => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -163,7 +164,7 @@ const Doctores = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{professionalLabel}es</h1>
+          <h1 className="text-2xl font-bold">{professionalLabelPlural}</h1>
           <p className="text-muted-foreground text-sm">
             {isLoading ? "Cargando…" : `${doctors.length} profesionales registrados`}
           </p>
@@ -317,11 +318,11 @@ const Doctores = () => {
       {/* List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" /> Cargando {professionalLabel.toLowerCase()}es…
+          <Loader2 className="w-5 h-5 animate-spin" /> Cargando {professionalLabelPlural.toLowerCase()}…
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-10">
-          {search ? "No se encontraron resultados." : `Aún no hay ${professionalLabel.toLowerCase()}es registrados.`}
+          {search ? "No se encontraron resultados." : `Aún no hay ${professionalLabelPlural.toLowerCase()} registrados.`}
         </p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

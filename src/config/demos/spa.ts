@@ -129,7 +129,7 @@ export const spaConfig: VerticalConfig = {
     { pathKey: "procedimientos", label: "Servicios" },
     { pathKey: "pacientes", label: "Clientes" },
     { pathKey: "atencion", label: "Atención" },
-    { pathKey: "doctores", label: "Staff" },
+    { pathKey: "doctores", label: "Terapeutas" },
     { pathKey: "caja", label: "Caja y Ventas" },
     { pathKey: "remuneraciones", label: "Comisiones" },
     { pathKey: "inventario", label: "Inventario" },
