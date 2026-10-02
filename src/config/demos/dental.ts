@@ -149,6 +149,7 @@ export const dentalConfig: VerticalConfig = {
     { pathKey: "atencion", label: "Atención Clínica" },
     { pathKey: "doctores", label: "Doctores" },
     { pathKey: "caja", label: "Caja y Pagos" },
+    { pathKey: "facturacion", label: "Facturación" },
     { pathKey: "remuneraciones", label: "Remuneraciones" },
     { pathKey: "inventario", label: "Inventario" },
     { pathKey: "laboratorios", label: "Laboratorios" },

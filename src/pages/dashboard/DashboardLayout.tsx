@@ -19,6 +19,7 @@ import {
   X,
   LogOut,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { useDemo, useDemoConfig } from "@/contexts/DemoContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -35,6 +36,7 @@ const PATH_KEY_TO_ICON: Record<string, React.ComponentType<{ className?: string 
   atencion: Stethoscope,
   doctores: UserCog,
   caja: CreditCard,
+  facturacion: FileText,
   remuneraciones: Calculator,
   inventario: Package,
   laboratorios: FlaskConical,

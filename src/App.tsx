@@ -27,6 +27,7 @@ import PatientRecibirPago from "./pages/dashboard/patient/PatientRecibirPago";
 import AtencionClinica from "./pages/dashboard/AtencionClinica";
 import Doctores from "./pages/dashboard/Doctores";
 import Caja from "./pages/dashboard/Caja";
+import Facturacion from "./pages/dashboard/Facturacion";
 import Remuneraciones from "./pages/dashboard/Remuneraciones";
 import Inventario from "./pages/dashboard/Inventario";
 import Laboratorios from "./pages/dashboard/Laboratorios";
@@ -110,6 +111,7 @@ const App = () => {
               <Route path="atencion" element={<AtencionClinica />} />
               <Route path="doctores" element={<Doctores />} />
               <Route path="caja" element={<Caja />} />
+              <Route path="facturacion" element={<Facturacion />} />
               <Route path="remuneraciones" element={<Remuneraciones />} />
               <Route path="inventario" element={<Inventario />} />
               <Route path="laboratorios" element={<Laboratorios />} />

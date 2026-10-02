@@ -90,6 +90,19 @@ export function computeInvoiceTotals(items: InvoiceItem[]) {
   return { subtotal, taxTotal, total: subtotal + taxTotal };
 }
 
+/** Todos los documentos del usuario (todos los pacientes), para la pantalla general de Facturación. */
+export async function getAllInvoices(): Promise<(Invoice & { patientName: string })[]> {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*, patients(name)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    ...fromRow(row as InvoiceRowWithQb),
+    patientName: (row as unknown as { patients: { name: string } | null }).patients?.name ?? row.buyer_name,
+  }));
+}
+
 export async function getInvoicesByPatient(patientId: string): Promise<Invoice[]> {
   const { data, error } = await supabase
     .from("invoices")

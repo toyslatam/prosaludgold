@@ -10,6 +10,7 @@ export const PATH_KEY_TO_PATH: Record<string, string> = {
   atencion: "atencion",
   doctores: "doctores",
   caja: "caja",
+  facturacion: "facturacion",
   remuneraciones: "remuneraciones",
   inventario: "inventario",
   laboratorios: "laboratorios",

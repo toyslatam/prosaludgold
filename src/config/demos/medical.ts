@@ -132,6 +132,7 @@ export const medicalConfig: VerticalConfig = {
     { pathKey: "atencion", label: "Atención Clínica" },
     { pathKey: "doctores", label: "Médicos" },
     { pathKey: "caja", label: "Caja y Pagos" },
+    { pathKey: "facturacion", label: "Facturación" },
     { pathKey: "remuneraciones", label: "Remuneraciones" },
     { pathKey: "inventario", label: "Inventario" },
     { pathKey: "laboratorios", label: "Laboratorios" },
