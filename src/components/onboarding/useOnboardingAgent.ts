@@ -40,12 +40,12 @@ const SIMULATED_RESPONSES: AgentResponse[] = [
     done: false,
   },
   {
-    message: "Módulos configurados ✅\n\nAhora cuéntame sobre tu **sede principal**: ¿Cuál es el nombre y la dirección?",
+    message: "Módulos configurados ✅\n\nAhora cuéntame sobre tu **sede principal**: nombre, dirección y teléfono (ej. \"Sede Paitilla, Calle 50, 6418-8589\")",
     extracted: { modules_enabled: [] },
     done: false,
   },
   {
-    message: "Sede registrada ✅\n\n¿Tienes **más sedes**? (responde 'sí' con el nombre y dirección, o 'no' para continuar)",
+    message: "Sede registrada ✅\n\n¿Tienes **más sedes**? (responde con 'no', o con nombre, dirección y teléfono de la siguiente)",
     extracted: { sedes: [] },
     done: false,
   },
@@ -60,6 +60,29 @@ const SIMULATED_RESPONSES: AgentResponse[] = [
     done: true,
   },
 ];
+
+/** Separa "Nombre, Dirección, Teléfono" en partes; el teléfono se detecta por patrón (dígitos/+/-), no por posición. */
+function parseSedeInput(input: string): { name: string; address?: string; phone?: string } {
+  const parts = input.split(",").map((p) => p.trim()).filter(Boolean);
+  const phoneRegex = /[+]?[\d][\d\s()-]{5,}\d/;
+  let phone: string | undefined;
+  const rest: string[] = [];
+  for (const part of parts) {
+    const match = part.match(phoneRegex);
+    if (match && !phone) {
+      phone = match[0].trim();
+      const leftover = part.replace(match[0], "").trim();
+      if (leftover) rest.push(leftover);
+    } else {
+      rest.push(part);
+    }
+  }
+  return {
+    name: rest[0] ?? "Sede Principal",
+    address: rest.slice(1).join(", ") || undefined,
+    phone,
+  };
+}
 
 export function useOnboardingAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -122,17 +145,13 @@ export function useOnboardingAgent() {
         if (input.includes("spa") || input.includes("bienestar") || input.includes("estet")) mods.push("spa");
         simResponse.extracted = { modules_enabled: mods.length ? mods : ["dental"] };
       } else if (simIndex === 2) {
-        simResponse.extracted = {
-          sedes: [{ name: userInput.split(",")[0]?.trim() ?? "Sede Principal" }],
-        };
+        simResponse.extracted = { sedes: [parseSedeInput(userInput)] };
       } else if (simIndex === 3) {
         const lower = userInput.toLowerCase();
         if (lower.startsWith("no") || lower === "no") {
           simResponse.extracted = {};
         } else {
-          simResponse.extracted = {
-            sedes: [{ name: userInput.split(",")[0]?.trim() ?? "Sede 2" }],
-          };
+          simResponse.extracted = { sedes: [parseSedeInput(userInput)] };
         }
       } else if (simIndex === 4) {
         simResponse.extracted = { phone: userInput };
