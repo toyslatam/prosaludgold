@@ -9,7 +9,9 @@ import {
   computeInvoiceTotals,
   type Invoice,
   type InvoiceItem,
+  type QbDocType,
 } from "@/lib/patients/invoices";
+import { useQuickbooksConnection, useSyncToQuickbooks } from "@/hooks/useSupabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -37,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, Download } from "lucide-react";
+import { FileText, Plus, Download, UploadCloud, Check } from "lucide-react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -89,7 +91,11 @@ export default function PatientFacturacion() {
   const [buyerRuc, setBuyerRuc] = useState(patient.cedula ?? "");
   const [buyerEmail, setBuyerEmail] = useState(patient.email ?? "");
   const [items, setItems] = useState<InvoiceItem[]>([{ ...EMPTY_ITEM }]);
+  const [qbDocType, setQbDocType] = useState<QbDocType>("recibo");
   const [issuing, setIssuing] = useState(false);
+  const { data: qbConnection } = useQuickbooksConnection();
+  const syncToQuickbooks = useSyncToQuickbooks();
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const totals = useMemo(() => computeInvoiceTotals(items), [items]);
 
@@ -99,6 +105,7 @@ export default function PatientFacturacion() {
     setBuyerRuc(patient.cedula ?? "");
     setBuyerEmail(patient.email ?? "");
     setItems([{ ...EMPTY_ITEM }]);
+    setQbDocType("recibo");
     setModalOpen(true);
   };
 
@@ -149,6 +156,7 @@ export default function PatientFacturacion() {
         buyerRuc: buyerRuc || undefined,
         buyerEmail: buyerEmail || undefined,
         items: validItems,
+        qbDocType,
       });
       toast.success("Factura emitida");
       setModalOpen(false);
@@ -159,6 +167,21 @@ export default function PatientFacturacion() {
     } finally {
       setIssuing(false);
     }
+  };
+
+  const handleSyncToQuickbooks = (invoiceId: string) => {
+    setSyncingId(invoiceId);
+    syncToQuickbooks.mutate(
+      { entity: "invoice", id: invoiceId },
+      {
+        onSuccess: (res) => {
+          toast.success(res.skipped ? "Omitido" : "Enviado a QuickBooks");
+          setRefresh((r) => r + 1);
+        },
+        onError: (err) => toast.error(err.message || "No se pudo enviar a QuickBooks"),
+        onSettled: () => setSyncingId(null),
+      }
+    );
   };
 
   return (
@@ -263,8 +286,10 @@ export default function PatientFacturacion() {
                       <TableHead>Fecha</TableHead>
                       <TableHead>Comprador</TableHead>
                       <TableHead>Folio / CUFE</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead>Estado</TableHead>
+                      {qbConnection && <TableHead>QuickBooks</TableHead>}
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -277,6 +302,9 @@ export default function PatientFacturacion() {
                         <TableCell>{inv.buyerName}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">
                           {inv.externalId ?? inv.cufe ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {inv.qbDocType === "recibo" ? "Recibo de venta" : "Factura"}
                         </TableCell>
                         <TableCell className="font-medium">
                           ${inv.total.toLocaleString()}
@@ -297,6 +325,30 @@ export default function PatientFacturacion() {
                             <p className="text-xs text-destructive mt-1">{inv.errorMessage}</p>
                           )}
                         </TableCell>
+                        {qbConnection && (
+                          <TableCell>
+                            {inv.qbSyncStatus === "synced" ? (
+                              <Badge variant="outline" className="text-xs gap-1 text-success border-success/30">
+                                <Check className="h-3 w-3" /> Enviado
+                              </Badge>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-xs h-7"
+                                disabled={syncingId === inv.id}
+                                onClick={() => handleSyncToQuickbooks(inv.id)}
+                              >
+                                <UploadCloud className="h-3 w-3" />
+                                {syncingId === inv.id
+                                  ? "Enviando…"
+                                  : inv.qbDocType === "recibo"
+                                    ? "Crear recibo en QuickBooks"
+                                    : "Crear factura en QuickBooks"}
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {inv.pdfUrl && (
                             <Button variant="outline" size="sm" className="gap-1" asChild>
@@ -359,6 +411,16 @@ export default function PatientFacturacion() {
             <DialogTitle>Emitir factura</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Tipo de documento</Label>
+              <Select value={qbDocType} onValueChange={(v) => setQbDocType(v as QbDocType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recibo">Recibo de venta (ya cobrado)</SelectItem>
+                  <SelectItem value="factura">Factura (por cobrar / a crédito)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {plans.length > 0 && (
               <div className="space-y-2">
                 <Label>Basar en plan / paquete (opcional)</Label>

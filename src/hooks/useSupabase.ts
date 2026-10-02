@@ -36,7 +36,7 @@ type LabOrderJoined = {
   doctors: { id: string; name: string } | null;
 };
 
-type CashEntryJoined = {
+export type CashEntryJoined = {
   id: string;
   patient_id: string | null;
   description: string;
@@ -48,6 +48,10 @@ type CashEntryJoined = {
   created_at: string;
   updated_at: string;
   patients: { id: string; name: string } | null;
+  payment_status: "pagado" | "por_cobrar";
+  qb_sales_receipt_id: string | null;
+  qb_invoice_id: string | null;
+  qb_sync_status: "pending" | "synced" | "error" | "skipped";
 };
 
 // ── New local types (tables added in migration 002) ───────────
@@ -574,7 +578,7 @@ export const useDisconnectQuickbooks = () => {
 
 export const useSyncToQuickbooks = () =>
   useMutation({
-    mutationFn: async (input: { entity: "cash_entry" | "payroll_entry"; id: string }) => {
+    mutationFn: async (input: { entity: "cash_entry" | "payroll_entry" | "invoice"; id: string }) => {
       const { data, error } = await supabase.functions.invoke("quickbooks-sync", { body: input });
       if (error) throw error;
       return data as { synced?: boolean; skipped?: boolean; error?: string };

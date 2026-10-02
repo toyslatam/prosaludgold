@@ -209,23 +209,31 @@ export async function findOrCreateVendor(
   return created.Vendor.Id;
 }
 
+export interface QbLineInput {
+  description: string;
+  amount: number;
+}
+
+function buildLines(input: { amount: number; description: string; lines?: QbLineInput[] }) {
+  const lines = input.lines?.length ? input.lines : [{ description: input.description, amount: input.amount }];
+  return lines.map((l) => ({
+    Amount: l.amount,
+    DetailType: "SalesItemLineDetail",
+    Description: l.description,
+    SalesItemLineDetail: {
+      ItemRef: { name: "Services", value: "1" },
+    },
+  }));
+}
+
 /** Requiere una cuenta de ingresos por defecto configurada en QuickBooks (Sales of Product Income). */
 export async function createSalesReceipt(
   accessToken: string,
   realmId: string,
-  input: { customerId?: string; amount: number; description: string; date: string }
+  input: { customerId?: string; amount: number; description: string; date: string; lines?: QbLineInput[] }
 ) {
   const body: Record<string, unknown> = {
-    Line: [
-      {
-        Amount: input.amount,
-        DetailType: "SalesItemLineDetail",
-        Description: input.description,
-        SalesItemLineDetail: {
-          ItemRef: { name: "Services", value: "1" },
-        },
-      },
-    ],
+    Line: buildLines(input),
     TxnDate: input.date,
     PrivateNote: input.description,
   };
@@ -236,6 +244,26 @@ export async function createSalesReceipt(
     body: JSON.stringify(body),
   });
   return created.SalesReceipt.Id as string;
+}
+
+/** Factura (cuenta por cobrar) — a diferencia del Sales Receipt, requiere Customer. */
+export async function createInvoice(
+  accessToken: string,
+  realmId: string,
+  input: { customerId: string; amount: number; description: string; date: string; lines?: QbLineInput[] }
+) {
+  const body: Record<string, unknown> = {
+    CustomerRef: { value: input.customerId },
+    Line: buildLines(input),
+    TxnDate: input.date,
+    PrivateNote: input.description,
+  };
+
+  const created = await qbApiFetch(accessToken, realmId, "invoice", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return created.Invoice.Id as string;
 }
 
 export async function createBill(

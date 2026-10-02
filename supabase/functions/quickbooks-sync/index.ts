@@ -4,6 +4,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   createBill,
+  createInvoice,
   createSalesReceipt,
   findOrCreateCustomer,
   findOrCreateVendor,
@@ -17,7 +18,7 @@ const CORS_HEADERS = {
 };
 
 interface RequestBody {
-  entity: "cash_entry" | "payroll_entry";
+  entity: "cash_entry" | "payroll_entry" | "invoice";
   id: string;
 }
 
@@ -66,6 +67,11 @@ Deno.serve(async (req: Request) => {
       return Response.json(result, { headers: CORS_HEADERS });
     }
 
+    if (body.entity === "invoice") {
+      const result = await syncInvoiceDoc(supabaseAdmin, accessToken, realmId, userId, body.id);
+      return Response.json(result, { headers: CORS_HEADERS });
+    }
+
     return Response.json({ error: "entity inválida" }, { status: 400, headers: CORS_HEADERS });
   } catch (e) {
     console.error("quickbooks-sync error", e);
@@ -94,6 +100,21 @@ async function syncCashEntry(supabaseAdmin: any, accessToken: string, realmId: s
   let customerId: string | undefined;
   if (entry.patients?.name) {
     customerId = await findOrCreateCustomer(accessToken, realmId, entry.patients);
+  }
+
+  if (entry.payment_status === "por_cobrar") {
+    if (!customerId) throw new Error("Una factura (por cobrar) requiere un paciente/cliente asociado");
+    const invoiceId = await createInvoice(accessToken, realmId, {
+      customerId,
+      amount: Number(entry.amount),
+      description: entry.description,
+      date: entry.date,
+    });
+    await supabaseAdmin
+      .from("cash_entries")
+      .update({ qb_invoice_id: invoiceId, qb_sync_status: "synced", qb_synced_at: new Date().toISOString() })
+      .eq("id", id);
+    return { synced: true, qb_invoice_id: invoiceId };
   }
 
   const salesReceiptId = await createSalesReceipt(accessToken, realmId, {
@@ -149,4 +170,58 @@ async function syncPayrollEntry(supabaseAdmin: any, accessToken: string, realmId
     .eq("id", id);
 
   return { synced: true, qb_bill_id: billId };
+}
+
+// deno-lint-ignore no-explicit-any
+async function syncInvoiceDoc(supabaseAdmin: any, accessToken: string, realmId: string, userId: string, id: string) {
+  const { data: doc, error } = await supabaseAdmin
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+  if (error || !doc) throw new Error("Documento de facturación no encontrado");
+
+  const customerId = await findOrCreateCustomer(accessToken, realmId, {
+    name: doc.buyer_name,
+    email: doc.buyer_email ?? null,
+    phone: null,
+  });
+
+  // deno-lint-ignore no-explicit-any
+  const items = (doc.items ?? []) as any[];
+  const lines = items.length
+    ? items.map((i) => ({
+        description: i.description as string,
+        amount: Math.round((i.quantity ?? 1) * (i.unitPrice ?? 0) * 100) / 100,
+      }))
+    : [{ description: `Factura ${doc.buyer_name}`, amount: Number(doc.subtotal) }];
+
+  if (doc.qb_doc_type === "recibo") {
+    const receiptId = await createSalesReceipt(accessToken, realmId, {
+      customerId,
+      amount: Number(doc.total),
+      description: `Factura ${doc.buyer_name}`,
+      date: (doc.created_at as string).slice(0, 10),
+      lines,
+    });
+    await supabaseAdmin
+      .from("invoices")
+      .update({ qb_doc_id: receiptId, qb_sync_status: "synced", qb_synced_at: new Date().toISOString() })
+      .eq("id", id);
+    return { synced: true, qb_doc_id: receiptId, qb_doc_type: "recibo" };
+  }
+
+  const invoiceId = await createInvoice(accessToken, realmId, {
+    customerId,
+    amount: Number(doc.total),
+    description: `Factura ${doc.buyer_name}`,
+    date: (doc.created_at as string).slice(0, 10),
+    lines,
+  });
+  await supabaseAdmin
+    .from("invoices")
+    .update({ qb_doc_id: invoiceId, qb_sync_status: "synced", qb_synced_at: new Date().toISOString() })
+    .eq("id", id);
+  return { synced: true, qb_doc_id: invoiceId, qb_doc_type: "factura" };
 }

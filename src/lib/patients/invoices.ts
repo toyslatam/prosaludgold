@@ -17,6 +17,10 @@ export interface InvoiceItem {
 
 export type InvoiceStatus = "draft" | "pending" | "issued" | "error" | "cancelled";
 
+/** Qué documento se crea en QuickBooks: factura (por cobrar) o recibo de venta (ya pagado). */
+export type QbDocType = "factura" | "recibo";
+export type QbSyncStatus = "pending" | "synced" | "error" | "skipped";
+
 export interface Invoice {
   id: string;
   patientId: string;
@@ -37,9 +41,20 @@ export interface Invoice {
   errorMessage?: string;
   createdAt: string;
   issuedAt?: string;
+  qbDocType: QbDocType;
+  qbDocId?: string;
+  qbSyncStatus: QbSyncStatus;
 }
 
-function fromRow(row: Tables<"invoices">): Invoice {
+// Columnas de QuickBooks (migración 017) no están en los tipos generados
+// (self-hosted, sin regenerar types.ts).
+type InvoiceRowWithQb = Tables<"invoices"> & {
+  qb_doc_type: QbDocType;
+  qb_doc_id: string | null;
+  qb_sync_status: QbSyncStatus;
+};
+
+function fromRow(row: InvoiceRowWithQb): Invoice {
   return {
     id: row.id,
     patientId: row.patient_id,
@@ -60,6 +75,9 @@ function fromRow(row: Tables<"invoices">): Invoice {
     errorMessage: row.error_message ?? undefined,
     createdAt: row.created_at,
     issuedAt: row.issued_at ?? undefined,
+    qbDocType: row.qb_doc_type ?? "factura",
+    qbDocId: row.qb_doc_id ?? undefined,
+    qbSyncStatus: row.qb_sync_status ?? "pending",
   };
 }
 
@@ -79,7 +97,7 @@ export async function getInvoicesByPatient(patientId: string): Promise<Invoice[]
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(fromRow);
+  return (data ?? []).map((row) => fromRow(row as InvoiceRowWithQb));
 }
 
 export interface IssueInvoiceInput {
@@ -89,6 +107,8 @@ export interface IssueInvoiceInput {
   buyerRuc?: string;
   buyerEmail?: string;
   items: InvoiceItem[];
+  /** Factura (por cobrar) o Recibo de venta (ya pagado) — decide qué se crea en QuickBooks. */
+  qbDocType?: QbDocType;
 }
 
 /** Resultado que devuelve la edge function `issue-invoice` (proxy al PAC). */
@@ -174,12 +194,14 @@ export async function issueInvoice(data: IssueInvoiceInput): Promise<Invoice> {
       cufe: fnData?.cufe ?? null,
       error_message: errorMessage,
       issued_at: succeeded ? new Date().toISOString() : null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...({ qb_doc_type: data.qbDocType ?? "factura" } as any),
     })
     .select()
     .single();
   if (error) throw error;
 
-  let finalRow = row;
+  let finalRow = row as InvoiceRowWithQb;
   if (succeeded && fnData?.pdfBase64) {
     const pdfUrl = await uploadInvoicePdf(user.id, row.id, fnData.pdfBase64);
     if (pdfUrl) {
@@ -189,7 +211,7 @@ export async function issueInvoice(data: IssueInvoiceInput): Promise<Invoice> {
         .eq("id", row.id)
         .select()
         .single();
-      if (updated) finalRow = updated;
+      if (updated) finalRow = updated as InvoiceRowWithQb;
     }
   }
 

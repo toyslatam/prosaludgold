@@ -127,7 +127,7 @@ const AtencionClinica = () => {
       // ningún lado, así que Caja siempre mostraba $0 aunque hubiera cobros.
       if (grossAmount > 0) {
         try {
-          const createdCashEntry = await insertCashEntry.mutateAsync({
+          await insertCashEntry.mutateAsync({
             type: "ingreso",
             description: `Atención #${encounter.id.slice(-6)} · ${patientName}`,
             amount: grossAmount,
@@ -135,12 +135,8 @@ const AtencionClinica = () => {
             date: encounter.startAt.slice(0, 10),
             patient_id: encounter.patientId || null,
           });
-          if (qbConnection) {
-            syncToQuickbooks.mutate(
-              { entity: "cash_entry", id: createdCashEntry.id },
-              { onError: () => toast.error("No se pudo sincronizar el cobro con QuickBooks (sí quedó registrado)") }
-            );
-          }
+          // El envío a QuickBooks (recibo o factura) se dispara manualmente
+          // desde Caja, no automático — ahí se decide pagado vs por cobrar.
         } catch {
           toast.error("No se pudo registrar el cobro de esta atención en Caja.");
         }
