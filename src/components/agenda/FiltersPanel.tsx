@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { FilterCombobox } from "./FilterCombobox";
 import { statusLabels } from "@/data/mockData";
 import { SITUATION_LABELS } from "@/types/agenda";
 import type { AppointmentStatus, SituationFinancial } from "@/types/agenda";
@@ -70,6 +70,8 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
   const clearFilters = () => onFiltersChange(getDefaultAgendaFilters());
 
   const branches = Array.from(new Set(doctors.map((d) => d.branch).filter(Boolean))).sort();
+  // Algunas sedes se guardaron como "Nombre; dirección completa" — mostramos solo el nombre, buscamos por ambos.
+  const shortBranchLabel = (b: string) => b.split(";")[0].trim();
 
   return (
     <div className={className}>
@@ -80,71 +82,46 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
           onChange={(e) => update({ searchPatient: e.target.value })}
           className="max-w-[220px]"
         />
-        <Select value={filters.branch || "all"} onValueChange={(v) => update({ branch: v })}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue placeholder="Sucursal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las sucursales</SelectItem>
-            {branches.map((b) => (
-              <SelectItem key={b} value={b}>
-                {b}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.chairId || "all"} onValueChange={(v) => update({ chairId: v })}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue placeholder="Cabina" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las cabinas</SelectItem>
-            {chairs.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.doctorId} onValueChange={(v) => update({ doctorId: v })}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Doctor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los doctores</SelectItem>
-            {doctors.map((d) => (
-              <SelectItem key={d.id} value={d.id}>
-                {d.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.status || "all"} onValueChange={(v) => update({ status: v === "all" ? "" : (v as AppointmentStatus) })}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            {ALL_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {statusLabels[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filters.situation || "all"} onValueChange={(v) => update({ situation: v === "all" ? "" : (v as SituationFinancial) })}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Situación" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {ALL_SITUATIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {SITUATION_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FilterCombobox
+          className="w-[190px]"
+          value={filters.branch || "all"}
+          onChange={(v) => update({ branch: v })}
+          allLabel="Todas las sucursales"
+          searchPlaceholder="Buscar sucursal…"
+          options={branches.map((b) => ({ value: b, label: shortBranchLabel(b), searchText: b }))}
+        />
+        <FilterCombobox
+          className="w-[190px]"
+          value={filters.chairId || "all"}
+          onChange={(v) => update({ chairId: v })}
+          allLabel="Todas las cabinas"
+          searchPlaceholder="Buscar cabina…"
+          options={chairs.map((c) => ({ value: c.id, label: c.name, searchText: c.branch }))}
+        />
+        <FilterCombobox
+          className="w-[200px]"
+          value={filters.doctorId}
+          onChange={(v) => update({ doctorId: v })}
+          allLabel="Todos los doctores"
+          searchPlaceholder="Buscar doctor…"
+          options={doctors.map((d) => ({ value: d.id, label: d.name, sublabel: d.specialty, searchText: d.specialty }))}
+        />
+        <FilterCombobox
+          className="w-[180px]"
+          value={filters.status || "all"}
+          onChange={(v) => update({ status: v === "all" ? "" : (v as AppointmentStatus) })}
+          allLabel="Todos los estados"
+          searchPlaceholder="Buscar estado…"
+          options={ALL_STATUSES.map((s) => ({ value: s, label: statusLabels[s] }))}
+        />
+        <FilterCombobox
+          className="w-[160px]"
+          value={filters.situation || "all"}
+          onChange={(v) => update({ situation: v === "all" ? "" : (v as SituationFinancial) })}
+          allLabel="Todas"
+          searchPlaceholder="Buscar situación…"
+          options={ALL_SITUATIONS.map((s) => ({ value: s, label: SITUATION_LABELS[s] }))}
+        />
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
