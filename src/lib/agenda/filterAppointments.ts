@@ -32,6 +32,7 @@ export function applyAgendaFilters(
     if (filters.status && apt.status !== filters.status) return false;
     if (filters.situation && apt.situation !== filters.situation) return false;
     if (filters.chairId && filters.chairId !== "all" && apt.chairId !== filters.chairId) return false;
+    if (filters.branch && filters.branch !== "all" && apt.branch !== filters.branch) return false;
     if (filters.statuses.length > 0 && !filters.statuses.includes(apt.status)) return false;
     if (filters.situations.length > 0 && (!apt.situation || !filters.situations.includes(apt.situation))) return false;
     return true;

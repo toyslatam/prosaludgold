@@ -10,6 +10,8 @@ import {
   useDoctors,
   usePatients,
 } from "@/hooks/useSupabase";
+import { useDemo } from "@/contexts/DemoContext";
+import { DEMO_VERTICALS } from "@/config/demos";
 import { getChairs } from "@/lib/agenda/repository";
 import { getLocationsWithSiteNames, type LocationWithSiteName } from "@/lib/agenda/locations";
 import { filterAppointmentsByDate, applyAgendaFilters } from "@/lib/agenda/filterAppointments";
@@ -18,7 +20,15 @@ import { FiltersPanel, getDefaultAgendaFilters, type AgendaFiltersState } from "
 import { AppointmentDrawer } from "@/components/agenda/AppointmentDrawer";
 import { LocationManagerModal } from "@/components/agenda/LocationManagerModal";
 import { AgendaDailyListTable } from "@/components/agenda/AgendaDailyListTable";
+import { AgendaSummaryCards } from "@/components/agenda/AgendaSummaryCards";
+import { AgendaCabinStatusPanel } from "@/components/agenda/AgendaCabinStatusPanel";
+import { AgendaProfessionalSummaryPanel } from "@/components/agenda/AgendaProfessionalSummaryPanel";
 import { CalendarDailyGrid } from "@/components/agenda/CalendarDailyGrid";
+import { AgendaWeeklyGrid } from "@/components/agenda/AgendaWeeklyGrid";
+import { AgendaDailyGlobalView } from "@/components/agenda/AgendaDailyGlobalView";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Plus, Printer } from "lucide-react";
 import type { AppointmentWithDetails } from "@/types/agenda";
 import type { AppointmentFormValues } from "@/components/agenda/AppointmentForm";
 import type { AgendaViewMode } from "@/types/agenda";
@@ -43,6 +53,8 @@ function useAgendaNotifications() {
 
 export default function Agenda() {
   const [searchParams] = useSearchParams();
+  const { vertical } = useDemo();
+  const verticalLabel = DEMO_VERTICALS.find((v) => v.key === vertical)?.name;
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<AgendaViewMode>(DEFAULT_VIEW);
   const [filters, setFilters] = useState<AgendaFiltersState>(getDefaultAgendaFilters);
@@ -207,29 +219,48 @@ export default function Agenda() {
 
   return (
     <div className="space-y-6 print:space-y-4">
-      <div className="flex flex-col gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-muted-foreground text-sm">
+      <div className="bg-card rounded-xl border border-border shadow-card p-4 sm:p-6 space-y-4 print:hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-bold">Agenda</h1>
+            {verticalLabel && (
+              <Badge variant="secondary" className="rounded-full font-normal">
+                Sucursal {verticalLabel}
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AgendaToolbar
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              appointmentCount={filtered.length}
+            />
+            <NotificationsCenter
+              items={notifications.items}
+              onMarkRead={notifications.markRead}
+              onClearAll={notifications.clearAll}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-muted-foreground text-sm capitalize">
             {format(selectedDate, "EEEE d 'de' MMMM yyyy", { locale: es })}
           </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
+              <Printer className="h-4 w-4" />
+              <span className="hidden sm:inline">Imprimir</span>
+            </Button>
+            <Button size="sm" onClick={() => openNewAppointment()} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva cita
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <AgendaToolbar
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onNewAppointment={() => openNewAppointment()}
-            onPrint={handlePrint}
-            appointmentCount={filtered.length}
-          />
-          <NotificationsCenter
-            items={notifications.items}
-            onMarkRead={notifications.markRead}
-            onClearAll={notifications.clearAll}
-          />
-        </div>
+
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <FiltersPanel filters={filters} onFiltersChange={setFilters} doctors={doctors as any} chairs={chairs} />
       </div>
@@ -244,18 +275,39 @@ export default function Agenda() {
       )}
 
       {viewMode === "daily_list" && (
-        <AgendaDailyListTable appointments={filtered} onSelectAppointment={openEditAppointment} />
-      )}
-
-      {viewMode === "weekly_grid" && (
-        <div className="bg-card rounded-xl border border-border shadow-card p-4 text-muted-foreground">
-          Vista semanal (próximamente). Citas del período: {filtered.length}.
+        <div className="space-y-4">
+          <AgendaSummaryCards appointments={filtered} />
+          <AgendaDailyListTable appointments={filtered} onSelectAppointment={openEditAppointment} />
         </div>
       )}
 
+      {viewMode === "weekly_grid" && (
+        <AgendaWeeklyGrid
+          selectedDate={selectedDate}
+          appointments={filtered}
+          onSelectAppointment={openEditAppointment}
+          onSelectDay={(dateStr) => openNewAppointment(dateStr, "09:00")}
+        />
+      )}
+
       {viewMode === "daily_global" && (
-        <div className="bg-card rounded-xl border border-border shadow-card p-4 text-muted-foreground">
-          Vista diaria global por doctor (próximamente). Citas del día: {filtered.length}.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <AgendaDailyGlobalView appointments={filtered} doctors={doctors as any} onSelectAppointment={openEditAppointment} />
+      )}
+
+      {(viewMode === "daily_grid" || viewMode === "daily_list") && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 print:hidden">
+          <AgendaCabinStatusPanel
+            locations={locationsForForm}
+            appointments={filtered}
+            onManageLocations={() => setLocationManagerOpen(true)}
+          />
+          <AgendaProfessionalSummaryPanel
+            appointments={filtered}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            doctors={doctors as any}
+            preferredDoctorId={filters.doctorId}
+          />
         </div>
       )}
 

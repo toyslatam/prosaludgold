@@ -16,6 +16,7 @@ export interface AgendaFiltersState {
   status: AppointmentStatus | "";
   situation: SituationFinancial | "";
   chairId: string;
+  branch: string;
   /** Estados seleccionados (avanzado) */
   statuses: AppointmentStatus[];
   situations: SituationFinancial[];
@@ -30,6 +31,7 @@ const DEFAULT_FILTERS: AgendaFiltersState = {
   status: "",
   situation: "",
   chairId: "all",
+  branch: "all",
   statuses: [],
   situations: [],
   confirmWhatsapp: null,
@@ -67,6 +69,8 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
 
   const clearFilters = () => onFiltersChange(getDefaultAgendaFilters());
 
+  const branches = Array.from(new Set(doctors.map((d) => d.branch).filter(Boolean))).sort();
+
   return (
     <div className={className}>
       <div className="flex flex-wrap gap-3 items-center">
@@ -76,6 +80,32 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
           onChange={(e) => update({ searchPatient: e.target.value })}
           className="max-w-[220px]"
         />
+        <Select value={filters.branch || "all"} onValueChange={(v) => update({ branch: v })}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Sucursal" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las sucursales</SelectItem>
+            {branches.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filters.chairId || "all"} onValueChange={(v) => update({ chairId: v })}>
+          <SelectTrigger className="w-[170px]">
+            <SelectValue placeholder="Cabina" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las cabinas</SelectItem>
+            {chairs.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={filters.doctorId} onValueChange={(v) => update({ doctorId: v })}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Doctor" />
@@ -160,22 +190,6 @@ export function FiltersPanel({ filters, onFiltersChange, doctors, chairs, classN
                     </div>
                   ))}
                 </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Box / Sillón</Label>
-                <Select value={filters.chairId} onValueChange={(v) => update({ chairId: v })}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {chairs.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} {c.branch ? `· ${c.branch}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <Button variant="outline" className="w-full gap-2" onClick={clearFilters}>
                 <X className="h-4 w-4" />

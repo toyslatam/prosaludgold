@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { statusColors } from "@/data/mockData";
-import type { AppointmentWithDetails } from "@/types/agenda";
-import { MessageCircle, Mail, Pin, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { statusColors, statusLabels } from "@/data/mockData";
+import { SITUATION_COLORS, SITUATION_LABELS } from "@/types/agenda";
+import type { AppointmentWithDetails, SituationFinancial } from "@/types/agenda";
+import { MessageCircle, Mail, Pin, AlertCircle, Plus } from "lucide-react";
+import { cn, initials } from "@/lib/utils";
 
 const SLOT_HEIGHT = 56;
 const START_HOUR = 8;
@@ -112,13 +113,17 @@ export function CalendarDailyGrid({
           {TIME_SLOTS.map((t) => (
             <div
               key={t}
-              className="absolute left-0 right-0 border-b border-border cursor-pointer hover:bg-primary/5 transition-colors"
+              className="group absolute left-0 right-0 border-b border-border cursor-pointer hover:bg-primary/5 transition-colors flex items-center justify-end pr-3"
               style={{
                 top: TIME_SLOTS.indexOf(t) * SLOT_HEIGHT,
                 height: SLOT_HEIGHT - 1,
               }}
               onClick={() => onSelectSlot(date, t)}
-            />
+            >
+              <span className="hidden group-hover:inline-flex items-center gap-1 text-xs font-medium text-primary">
+                <Plus className="h-3.5 w-3.5" /> Agendar turno
+              </span>
+            </div>
           ))}
           {dayAppointments.map((apt) => {
             const { topPx, heightPx } = getBlockStyle(apt);
@@ -127,12 +132,14 @@ export function CalendarDailyGrid({
             const lane = laneInfo?.lane ?? 0;
             const gapPx = 4;
             const marginPx = 8;
+            const expanded = heightPx >= 72;
 
             return (
               <div
                 key={apt.id}
                 className={cn(
-                  "absolute rounded-lg p-2 border text-xs cursor-pointer transition-shadow hover:shadow-md",
+                  "absolute rounded-lg border text-xs cursor-pointer transition-shadow hover:shadow-md overflow-hidden",
+                  expanded ? "p-2.5" : "p-1.5",
                   statusColors[apt.status],
                 )}
                 style={{
@@ -150,21 +157,60 @@ export function CalendarDailyGrid({
                   onSelectAppointment(apt);
                 }}
               >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-h-0 h-full">
-                  <span className="font-semibold shrink-0">{apt.patientName}</span>
-                  <span className="opacity-90 text-[11px] shrink-0">{apt.doctorName}</span>
-                  <span className="opacity-75 text-[11px] min-w-0 truncate">{apt.reason}</span>
-                  {apt.chairName && (
-                    <span className="inline-flex items-center gap-0.5 text-[11px] shrink-0">
-                      <Pin className="h-3 w-3" /> {apt.chairName}
+                {expanded ? (
+                  <div className="flex flex-col gap-1 h-full min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="shrink-0 h-6 w-6 rounded-full bg-background/70 text-[10px] font-semibold flex items-center justify-center">
+                        {initials(apt.patientName)}
+                      </span>
+                      <span className="font-semibold truncate min-w-0">{apt.patientName}</span>
+                      <span className="ml-auto inline-flex items-center gap-1 shrink-0">
+                        {apt.confirmations.whatsapp && <MessageCircle className="h-3 w-3" />}
+                        {apt.confirmations.email && <Mail className="h-3 w-3" />}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0 text-[11px] opacity-90">
+                      <span className="truncate min-w-0">{apt.reason || apt.doctorName}</span>
+                      {apt.chairName && (
+                        <span className="inline-flex items-center gap-0.5 shrink-0">
+                          <Pin className="h-3 w-3" /> {apt.chairName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-auto flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-background/70 font-medium whitespace-nowrap">
+                        {statusLabels[apt.status]}
+                      </span>
+                      {apt.situation && (
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full border whitespace-nowrap",
+                            SITUATION_COLORS[apt.situation as SituationFinancial],
+                          )}
+                        >
+                          {SITUATION_LABELS[apt.situation as SituationFinancial]}
+                        </span>
+                      )}
+                      {apt.situation === "deuda" && <AlertCircle className="h-3 w-3 text-destructive ml-auto shrink-0" />}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-h-0 h-full">
+                    <span className="font-semibold shrink-0">{apt.patientName}</span>
+                    <span className="opacity-90 text-[11px] shrink-0">{apt.doctorName}</span>
+                    <span className="opacity-75 text-[11px] min-w-0 truncate">{apt.reason}</span>
+                    {apt.chairName && (
+                      <span className="inline-flex items-center gap-0.5 text-[11px] shrink-0">
+                        <Pin className="h-3 w-3" /> {apt.chairName}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 ml-auto shrink-0">
+                      {apt.confirmations.whatsapp && <MessageCircle className="h-3 w-3" />}
+                      {apt.confirmations.email && <Mail className="h-3 w-3" />}
+                      {apt.situation === "deuda" && <AlertCircle className="h-3 w-3 text-destructive" />}
                     </span>
-                  )}
-                  <span className="inline-flex items-center gap-1 ml-auto shrink-0">
-                    {apt.confirmations.whatsapp && <MessageCircle className="h-3 w-3" />}
-                    {apt.confirmations.email && <Mail className="h-3 w-3" />}
-                    {apt.situation === "deuda" && <AlertCircle className="h-3 w-3 text-destructive" />}
-                  </span>
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
