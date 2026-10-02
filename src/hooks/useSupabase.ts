@@ -64,6 +64,11 @@ export type PayrollEntry = {
   /** A quién pertenece esta fila: el profesional o la clínica (su contraparte). */
   party: "doctor" | "clinic";
   notes: string | null;
+  payment_method: "yappy" | "ach" | "tarjeta_credito" | "transferencia_internacional" | "efectivo" | null;
+  /** % de ITBMS (Yappy/ACH/tarjeta/transferencia internacional). Null si es efectivo. */
+  itbms_percentage: number | null;
+  /** Solo aplica cuando payment_method es efectivo. */
+  is_invoiced: boolean | null;
   created_at: string;
   updated_at: string;
   doctors?: { id: string; name: string; specialty: string; branch: string } | null;

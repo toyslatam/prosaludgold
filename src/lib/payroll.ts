@@ -1,5 +1,12 @@
 /** Reparto doctor/clínica para una liquidación (payroll_entries). */
 
+export type PayrollPaymentMethod =
+  | "yappy"
+  | "ach"
+  | "tarjeta_credito"
+  | "transferencia_internacional"
+  | "efectivo";
+
 export interface PayrollSplitInput {
   doctor_id: string;
   period: string;
@@ -8,6 +15,9 @@ export interface PayrollSplitInput {
   /** % que se lleva el profesional; el resto queda para la clínica. */
   doctorPercentage: number;
   notes?: string | null;
+  payment_method?: PayrollPaymentMethod | null;
+  itbms_percentage?: number | null;
+  is_invoiced?: boolean | null;
 }
 
 export interface PayrollSplitEntry {
@@ -20,6 +30,9 @@ export interface PayrollSplitEntry {
   status: "pendiente";
   party: "doctor" | "clinic";
   notes: string | null;
+  payment_method: PayrollPaymentMethod | null;
+  itbms_percentage: number | null;
+  is_invoiced: boolean | null;
 }
 
 function round2(n: number): number {
@@ -37,6 +50,9 @@ export function buildPayrollSplit(input: PayrollSplitInput): [PayrollSplitEntry,
     gross_amount: input.gross_amount,
     status: "pendiente" as const,
     notes: input.notes ?? null,
+    payment_method: input.payment_method ?? null,
+    itbms_percentage: input.itbms_percentage ?? null,
+    is_invoiced: input.is_invoiced ?? null,
   };
   return [
     {

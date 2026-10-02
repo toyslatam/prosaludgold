@@ -11,14 +11,22 @@ import {
   useQuickbooksConnection,
 } from "@/hooks/useSupabase";
 import { buildPayrollSplit } from "@/lib/payroll";
+import { useDemo } from "@/contexts/DemoContext";
+import { useAppConfig } from "@/contexts/AppConfigContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calculator, Plus, Loader2, CheckCircle2, Clock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  PaymentMethodCombobox,
+  ITBMS_METHODS,
+  type PaymentMethod,
+} from "@/components/payroll/PaymentMethodCombobox";
 
 type LiqForm = {
   doctor_id: string;
@@ -27,16 +35,24 @@ type LiqForm = {
   sessions: string;
   gross_amount: string;
   notes: string;
+  payment_method: PaymentMethod | "";
+  itbms_percentage: string;
+  is_invoiced: boolean;
 };
 
 const DEFAULT_COMMISSION = "60";
+const DEFAULT_ITBMS = "7";
 const currentPeriod = format(new Date(), "yyyy-MM");
 const EMPTY: LiqForm = {
   doctor_id: "", period: currentPeriod, percentage: DEFAULT_COMMISSION,
   sessions: "0", gross_amount: "0", notes: "",
+  payment_method: "", itbms_percentage: DEFAULT_ITBMS, is_invoiced: false,
 };
 
 const Remuneraciones = () => {
+  const { vertical } = useDemo();
+  const { enabledModules } = useAppConfig();
+  const pageTitle = vertical === "spa" || enabledModules.includes("spa") ? "Comisiones" : "Remuneraciones";
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<LiqForm>(EMPTY);
   const [period, setPeriod] = useState(currentPeriod);
@@ -85,6 +101,11 @@ const Remuneraciones = () => {
       gross_amount: gross,
       doctorPercentage: percentage,
       notes: form.notes.trim() || null,
+      payment_method: form.payment_method || null,
+      itbms_percentage: form.payment_method && ITBMS_METHODS.includes(form.payment_method)
+        ? parseFloat(form.itbms_percentage) || 0
+        : null,
+      is_invoiced: form.payment_method === "efectivo" ? form.is_invoiced : null,
     });
 
     insert.mutate(doctorEntry, {
@@ -130,7 +151,7 @@ const Remuneraciones = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Remuneraciones</h1>
+          <h1 className="text-2xl font-bold">{pageTitle}</h1>
           <p className="text-muted-foreground text-sm capitalize">{periodLabel}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -190,6 +211,33 @@ const Remuneraciones = () => {
                     <span className="text-muted-foreground">Clínica recibe:</span>
                     <span className="font-bold">${clinicShareAmount.toLocaleString()}</span>
                   </div>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label>Método de pago</Label>
+                <PaymentMethodCombobox
+                  value={form.payment_method}
+                  onChange={(v) => setForm((f) => ({ ...f, payment_method: v, is_invoiced: v === "efectivo" ? f.is_invoiced : false }))}
+                />
+              </div>
+              {form.payment_method && ITBMS_METHODS.includes(form.payment_method) && (
+                <div className="space-y-1.5">
+                  <Label>ITBMS (%)</Label>
+                  <Input
+                    type="number" min="0" max="100" step="0.5"
+                    value={form.itbms_percentage}
+                    onChange={(e) => setForm((f) => ({ ...f, itbms_percentage: e.target.value }))}
+                  />
+                </div>
+              )}
+              {form.payment_method === "efectivo" && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_invoiced"
+                    checked={form.is_invoiced}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_invoiced: v === true }))}
+                  />
+                  <Label htmlFor="is_invoiced" className="font-normal cursor-pointer">Se factura</Label>
                 </div>
               )}
               <div className="space-y-1.5">
