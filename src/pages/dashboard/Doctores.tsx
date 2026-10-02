@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Stethoscope, Plus, Pencil, Loader2, Search, Settings } from "lucide-react";
+import { Stethoscope, Plus, Pencil, Loader2, Search, Settings, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useDemo } from "@/contexts/DemoContext";
 import { useAppConfig } from "@/contexts/AppConfigContext";
@@ -14,6 +14,7 @@ import type { VerticalKey } from "@/config/demos";
 import { getSpecialties } from "@/lib/professionals/specialties";
 import { getProfessionalLabel } from "@/lib/professionals/label";
 import { SpecialtyManagerModal } from "@/components/professionals/SpecialtyManagerModal";
+import { ImportColaboradoresDialog } from "@/components/professionals/ImportColaboradoresDialog";
 
 const MODULE_LABELS: Record<string, string> = {
   dental: "Odontología",
@@ -26,11 +27,16 @@ type DoctorForm = {
   specialty: string;
   branch: string;
   available: boolean;
+  cedula: string;
+  address: string;
   ruc: string;
   ruc_dv: string;
   email: string;
   phone: string;
+  bank_name: string;
   bank_account: string;
+  account_type: "ahorro" | "corriente";
+  account_holder_name: string;
   commission_percentage: string;
 };
 
@@ -42,13 +48,30 @@ const EMPTY_FORM: DoctorForm = {
   specialty: "",
   branch: "",
   available: true,
+  cedula: "",
+  address: "",
   ruc: "",
   ruc_dv: "",
   email: "",
   phone: DEFAULT_PHONE_PREFIX,
+  bank_name: "",
   bank_account: "",
+  account_type: "ahorro",
+  account_holder_name: "",
   commission_percentage: DEFAULT_COMMISSION,
 };
+
+// Columnas agregadas después de la generación de tipos (self-hosted, sin
+// regenerar types.ts): cedula, address, photo_url, bank_name, account_type,
+// account_holder_name (migración 018).
+interface DoctorBankDetails {
+  cedula: string | null;
+  address: string | null;
+  photo_url: string | null;
+  bank_name: string | null;
+  account_type: "ahorro" | "corriente";
+  account_holder_name: string | null;
+}
 
 const Doctores = () => {
   const { vertical } = useDemo();
@@ -98,18 +121,23 @@ const Doctores = () => {
   });
 
   const openEdit = (id: string) => {
-    const doc = doctors.find((d) => d.id === id);
+    const doc = doctors.find((d) => d.id === id) as (typeof doctors)[number] & DoctorBankDetails | undefined;
     if (!doc) return;
     setForm({
       name: doc.name,
       specialty: doc.specialty,
       branch: doc.branch,
       available: doc.available,
+      cedula: doc.cedula ?? "",
+      address: doc.address ?? "",
       ruc: doc.ruc ?? "",
       ruc_dv: doc.ruc_dv ?? "",
       email: doc.email ?? "",
       phone: doc.phone ?? DEFAULT_PHONE_PREFIX,
+      bank_name: doc.bank_name ?? "",
       bank_account: doc.bank_account ?? "",
+      account_type: doc.account_type ?? "ahorro",
+      account_holder_name: doc.account_holder_name ?? doc.name,
       commission_percentage: String(doc.commission_percentage ?? DEFAULT_COMMISSION),
     });
     setFormModules(doc.modules_enabled?.length ? (doc.modules_enabled as VerticalKey[]) : enabledModules);
@@ -123,10 +151,13 @@ const Doctores = () => {
     const commissionValue = parseFloat(form.commission_percentage);
     const payload = {
       ...form,
+      // Si no se edita, el titular de la cuenta es el propio colaborador.
+      account_holder_name: form.account_holder_name.trim() || form.name.trim(),
       commission_percentage: Number.isFinite(commissionValue)
         ? Math.min(100, Math.max(0, commissionValue))
         : parseFloat(DEFAULT_COMMISSION),
-    };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
 
     if (editingId) {
       update.mutate(
@@ -158,6 +189,7 @@ const Doctores = () => {
   };
 
   const isPending = insert.isPending || update.isPending;
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -169,6 +201,10 @@ const Doctores = () => {
             {isLoading ? "Cargando…" : `${doctors.length} profesionales registrados`}
           </p>
         </div>
+        <div className="flex gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+          <Upload className="w-4 h-4" /> Importar Excel
+        </Button>
         <Dialog open={openNew} onOpenChange={setOpenNew}>
           <DialogTrigger asChild>
             <Button
@@ -235,6 +271,14 @@ const Doctores = () => {
                   </Select>
                 )}
               </div>
+              <div className="space-y-1.5">
+                <Label>Cédula / Pasaporte</Label>
+                <Input value={form.cedula} onChange={(e) => setForm((f) => ({ ...f, cedula: e.target.value }))} placeholder="8-123-4567" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Domicilio</Label>
+                <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Calle, ciudad" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>RUC</Label>
@@ -254,8 +298,32 @@ const Doctores = () => {
                 <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+56 9 1234 5678" />
               </div>
               <div className="space-y-1.5">
-                <Label>Número de cuenta bancaria</Label>
-                <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+                <Label>Banco</Label>
+                <Input value={form.bank_name} onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))} placeholder="Banco General" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Número de cuenta bancaria</Label>
+                  <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de cuenta</Label>
+                  <Select value={form.account_type} onValueChange={(v) => setForm((f) => ({ ...f, account_type: v as "ahorro" | "corriente" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ahorro">Ahorro</SelectItem>
+                      <SelectItem value="corriente">Corriente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del titular de la cuenta</Label>
+                <Input
+                  value={form.account_holder_name || form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, account_holder_name: e.target.value }))}
+                  placeholder="Por defecto, el nombre del colaborador"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Comisión del profesional (%)</Label>
@@ -297,6 +365,7 @@ const Doctores = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -422,6 +491,14 @@ const Doctores = () => {
                 </Select>
               )}
             </div>
+            <div className="space-y-1.5">
+              <Label>Cédula / Pasaporte</Label>
+              <Input value={form.cedula} onChange={(e) => setForm((f) => ({ ...f, cedula: e.target.value }))} placeholder="8-123-4567" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Domicilio</Label>
+              <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Calle, ciudad" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>RUC</Label>
@@ -441,8 +518,32 @@ const Doctores = () => {
               <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+56 9 1234 5678" />
             </div>
             <div className="space-y-1.5">
-              <Label>Número de cuenta bancaria</Label>
-              <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+              <Label>Banco</Label>
+              <Input value={form.bank_name} onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))} placeholder="Banco General" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Número de cuenta bancaria</Label>
+                <Input value={form.bank_account} onChange={(e) => setForm((f) => ({ ...f, bank_account: e.target.value }))} placeholder="00-000-00000-00" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de cuenta</Label>
+                <Select value={form.account_type} onValueChange={(v) => setForm((f) => ({ ...f, account_type: v as "ahorro" | "corriente" }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ahorro">Ahorro</SelectItem>
+                    <SelectItem value="corriente">Corriente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nombre del titular de la cuenta</Label>
+              <Input
+                value={form.account_holder_name || form.name}
+                onChange={(e) => setForm((f) => ({ ...f, account_holder_name: e.target.value }))}
+                placeholder="Por defecto, el nombre del colaborador"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Comisión del profesional (%)</Label>
@@ -491,6 +592,15 @@ const Doctores = () => {
         vertical={specialtyVertical}
         onChanged={() => setSpecialtiesRefresh((r) => r + 1)}
         countUsage={(s) => doctors.filter((d) => d.specialty === s.name).length}
+      />
+
+      <ImportColaboradoresDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        vertical={vertical}
+        enabledModules={enabledModules}
+        defaultBranch={activeSedes[0]?.name ?? "Principal"}
+        onImported={() => toast.success("Colaboradores importados")}
       />
     </div>
   );

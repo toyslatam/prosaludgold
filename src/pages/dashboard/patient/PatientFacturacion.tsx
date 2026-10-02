@@ -408,7 +408,7 @@ export default function PatientFacturacion() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Emitir factura</DialogTitle>
+            <DialogTitle>{qbDocType === "recibo" ? "Emitir recibo" : "Emitir factura"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
