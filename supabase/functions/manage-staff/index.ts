@@ -25,6 +25,8 @@ interface CreateBody {
   email: string;
   password: string;
   allowedModules: string[];
+  /** Si viene, esta cuenta queda restringida a su propia agenda + historial clínico de sus pacientes. */
+  linkedDoctorId?: string | null;
 }
 
 interface UpdateBody {
@@ -34,6 +36,7 @@ interface UpdateBody {
   active?: boolean;
   newPassword?: string;
   displayName?: string;
+  linkedDoctorId?: string | null;
 }
 
 interface DeleteBody {
@@ -83,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (body.action === "create") {
-      const { username, displayName, email, password, allowedModules } = body;
+      const { username, displayName, email, password, allowedModules, linkedDoctorId } = body;
       if (!username?.trim() || !displayName?.trim() || !email?.trim() || !password || password.length < 8) {
         return jsonResponse(
           { ok: false, error: "Usuario, nombre, correo y contraseña (mínimo 8 caracteres) son obligatorios." },
@@ -114,10 +117,11 @@ Deno.serve(async (req: Request) => {
           auth_user_id: created.user.id,
           username: username.trim(),
           display_name: displayName.trim(),
-          role: "secretaria",
+          role: linkedDoctorId ? "colaborador" : "secretaria",
           allowed_modules: allowedModules ?? [],
           active: true,
           must_change_password: false,
+          linked_doctor_id: linkedDoctorId || null,
         })
         .select()
         .single();
@@ -131,7 +135,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (body.action === "update") {
-      const { memberId, allowedModules, active, newPassword, displayName } = body;
+      const { memberId, allowedModules, active, newPassword, displayName, linkedDoctorId } = body;
       const { data: member, error: findErr } = await admin
         .from("clinic_members")
         .select("*")
@@ -150,6 +154,10 @@ Deno.serve(async (req: Request) => {
       if (allowedModules !== undefined) patch.allowed_modules = allowedModules;
       if (active !== undefined) patch.active = active;
       if (displayName !== undefined) patch.display_name = displayName;
+      if (linkedDoctorId !== undefined) {
+        patch.linked_doctor_id = linkedDoctorId || null;
+        patch.role = linkedDoctorId ? "colaborador" : "secretaria";
+      }
 
       const { data: updated, error: updateErr } = await admin
         .from("clinic_members")

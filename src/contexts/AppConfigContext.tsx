@@ -46,6 +46,9 @@ export interface ClinicMembership {
   role: string;
   allowedModules: string[];
   mustChangePassword: boolean;
+  /** Si está presente, esta cuenta es de un colaborador (doctor/terapeuta)
+   *  restringido a su propia agenda y al historial clínico de sus pacientes. */
+  linkedDoctorId: string | null;
 }
 
 interface AppConfigContextValue {
@@ -128,6 +131,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
             role: row.role,
             allowedModules: row.allowed_modules ?? [],
             mustChangePassword: row.must_change_password,
+            linkedDoctorId: row.linked_doctor_id ?? null,
           });
         } else {
           setMembership(null);

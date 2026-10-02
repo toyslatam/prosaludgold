@@ -24,9 +24,27 @@ function fromRow(row: Tables<"patients">): Patient {
   };
 }
 
+/**
+ * Colaboradores (doctores/terapeutas) vinculados a su propia ficha no deben
+ * ver datos de contacto de sus pacientes (teléfono/correo/dirección) — para
+ * ellos se consulta `patients_clinical` (misma RLS, sin esas columnas) en
+ * vez de la tabla real. Dueño/secretarias siguen viendo la tabla completa.
+ */
+async function patientsSource(): Promise<"patients" | "patients_clinical"> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "patients";
+  const { data } = await supabase
+    .from("clinic_members")
+    .select("linked_doctor_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  return data?.linked_doctor_id ? "patients_clinical" : "patients";
+}
+
 /** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
 export async function getPatients(vertical?: string): Promise<Patient[]> {
-  let query = supabase.from("patients").select("*").order("name");
+  const source = await patientsSource();
+  let query = supabase.from(source).select("*").order("name");
   if (vertical && vertical !== "multi") {
     query = query.contains("modules_enabled", [vertical]);
   }
@@ -36,7 +54,8 @@ export async function getPatients(vertical?: string): Promise<Patient[]> {
 }
 
 export async function getPatientById(id: string): Promise<Patient | undefined> {
-  const { data, error } = await supabase.from("patients").select("*").eq("id", id).maybeSingle();
+  const source = await patientsSource();
+  const { data, error } = await supabase.from(source).select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return data ? fromRow(data) : undefined;
 }

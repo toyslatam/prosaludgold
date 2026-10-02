@@ -3,11 +3,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { useDemoConfig } from "@/contexts/DemoContext";
+import { useDoctors } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +46,7 @@ interface StaffMember {
   allowed_modules: string[];
   active: boolean;
   created_at: string;
+  linked_doctor_id: string | null;
 }
 
 async function callManageStaff<T = unknown>(body: Record<string, unknown>): Promise<T> {
@@ -57,6 +60,8 @@ async function callManageStaff<T = unknown>(body: Record<string, unknown>): Prom
 export default function UsuariosPermisos() {
   const { clinicConfig, membership } = useAppConfig();
   const config = useDemoConfig();
+  const { data: doctorsData } = useDoctors();
+  const doctors = (doctorsData ?? []) as DoctorOption[];
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -180,19 +185,26 @@ export default function UsuariosPermisos() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">{m.role}</Badge>
+                      {m.linked_doctor_id && (
+                        <p className="text-[11px] text-muted-foreground mt-1 truncate max-w-[140px]">
+                          {doctors.find((d) => d.id === m.linked_doctor_id)?.name ?? "Colaborador"}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[260px]">
-                        {m.allowed_modules.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Sin módulos</span>
-                        ) : (
-                          m.allowed_modules.map((pk) => (
+                      {m.linked_doctor_id ? (
+                        <span className="text-xs text-muted-foreground">Su agenda + historial de sus pacientes</span>
+                      ) : m.allowed_modules.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">Sin módulos</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 max-w-[260px]">
+                          {m.allowed_modules.map((pk) => (
                             <Badge key={pk} variant="outline" className="text-[10px] font-normal">
                               {assignableModules.find((a) => a.pathKey === pk)?.label ?? pk}
                             </Badge>
-                          ))
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell><StatusBadge active={m.active} /></TableCell>
                     <TableCell className="text-right">
@@ -217,12 +229,14 @@ export default function UsuariosPermisos() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         assignableModules={assignableModules}
+        doctors={doctors}
         onCreated={loadMembers}
       />
       <EditStaffDialog
         member={editMember}
         onOpenChange={(open) => !open && setEditMember(null)}
         assignableModules={assignableModules}
+        doctors={doctors}
         onSaved={loadMembers}
       />
       <AlertDialog open={!!deleteMember} onOpenChange={(open) => !open && setDeleteMember(null)}>
@@ -322,15 +336,52 @@ function ModuleCheckboxes({
   );
 }
 
+type DoctorOption = { id: string; name: string; specialty?: string };
+
+function LinkedDoctorSelect({
+  doctors,
+  value,
+  onChange,
+}: {
+  doctors: DoctorOption[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>Vincular a colaborador (opcional)</Label>
+      <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Ninguno — acceso de secretaría" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Ninguno — acceso de secretaría (usa los módulos de abajo)</SelectItem>
+          {doctors.map((d) => (
+            <SelectItem key={d.id} value={d.id}>
+              {d.name}{d.specialty ? ` · ${d.specialty}` : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">
+        Si vinculas a un colaborador, su cuenta queda limitada a su propia agenda y al historial clínico de
+        sus pacientes (sin teléfono/correo/dirección), sin importar los módulos marcados abajo.
+      </p>
+    </div>
+  );
+}
+
 function CreateStaffDialog({
   open,
   onOpenChange,
   assignableModules,
+  doctors,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assignableModules: ModuleOption[];
+  doctors: DoctorOption[];
   onCreated: () => void;
 }) {
   const [username, setUsername] = useState("");
@@ -338,6 +389,7 @@ function CreateStaffDialog({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [allowedModules, setAllowedModules] = useState<string[]>([]);
+  const [linkedDoctorId, setLinkedDoctorId] = useState("");
   const [saving, setSaving] = useState(false);
 
   const reset = () => {
@@ -346,12 +398,21 @@ function CreateStaffDialog({
     setEmail("");
     setPassword("");
     setAllowedModules([]);
+    setLinkedDoctorId("");
   };
 
   const handleCreate = async () => {
     setSaving(true);
     try {
-      await callManageStaff({ action: "create", username, displayName, email, password, allowedModules });
+      await callManageStaff({
+        action: "create",
+        username,
+        displayName,
+        email,
+        password,
+        allowedModules,
+        linkedDoctorId: linkedDoctorId || null,
+      });
       toast.success(`Usuario ${username} creado`);
       reset();
       onOpenChange(false);
@@ -386,10 +447,13 @@ function CreateStaffDialog({
             <Label>Contraseña (se la entregas tú directamente)</Label>
             <Input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
           </div>
-          <div className="space-y-1.5">
-            <Label>Módulos permitidos</Label>
-            <ModuleCheckboxes assignableModules={assignableModules} value={allowedModules} onChange={setAllowedModules} />
-          </div>
+          <LinkedDoctorSelect doctors={doctors} value={linkedDoctorId} onChange={setLinkedDoctorId} />
+          {!linkedDoctorId && (
+            <div className="space-y-1.5">
+              <Label>Módulos permitidos</Label>
+              <ModuleCheckboxes assignableModules={assignableModules} value={allowedModules} onChange={setAllowedModules} />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
@@ -407,14 +471,17 @@ function EditStaffDialog({
   member,
   onOpenChange,
   assignableModules,
+  doctors,
   onSaved,
 }: {
   member: StaffMember | null;
   onOpenChange: (open: boolean) => void;
   assignableModules: ModuleOption[];
+  doctors: DoctorOption[];
   onSaved: () => void;
 }) {
   const [allowedModules, setAllowedModules] = useState<string[]>([]);
+  const [linkedDoctorId, setLinkedDoctorId] = useState("");
   const [active, setActive] = useState(true);
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -422,6 +489,7 @@ function EditStaffDialog({
   useEffect(() => {
     if (member) {
       setAllowedModules(member.allowed_modules);
+      setLinkedDoctorId(member.linked_doctor_id ?? "");
       setActive(member.active);
       setNewPassword("");
     }
@@ -437,6 +505,7 @@ function EditStaffDialog({
         memberId: member.id,
         allowedModules,
         active,
+        linkedDoctorId: linkedDoctorId || null,
         ...(newPassword ? { newPassword } : {}),
       });
       toast.success("Usuario actualizado");
@@ -458,10 +527,13 @@ function EditStaffDialog({
             <Checkbox id="active" checked={active} onCheckedChange={(v) => setActive(!!v)} />
             <label htmlFor="active" className="text-sm cursor-pointer">Cuenta activa</label>
           </div>
-          <div className="space-y-1.5">
-            <Label>Módulos permitidos</Label>
-            <ModuleCheckboxes assignableModules={assignableModules} value={allowedModules} onChange={setAllowedModules} />
-          </div>
+          <LinkedDoctorSelect doctors={doctors} value={linkedDoctorId} onChange={setLinkedDoctorId} />
+          {!linkedDoctorId && (
+            <div className="space-y-1.5">
+              <Label>Módulos permitidos</Label>
+              <ModuleCheckboxes assignableModules={assignableModules} value={allowedModules} onChange={setAllowedModules} />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Restablecer contraseña (opcional)</Label>
             <Input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Dejar vacío para no cambiarla" />
