@@ -77,6 +77,9 @@ const Remuneraciones = () => {
   const totalClinica = clinicEntries.reduce((s, e) => s + e.total_amount, 0);
 
   const selectedDoctor = doctors.find((d) => d.id === form.doctor_id);
+  const showItbms = form.payment_method
+    ? ITBMS_METHODS.includes(form.payment_method) || (form.payment_method === "efectivo" && form.is_invoiced)
+    : false;
 
   const handleSelectDoctor = (id: string) => {
     const doctor = doctors.find((d) => d.id === id);
@@ -102,9 +105,7 @@ const Remuneraciones = () => {
       doctorPercentage: percentage,
       notes: form.notes.trim() || null,
       payment_method: form.payment_method || null,
-      itbms_percentage: form.payment_method && ITBMS_METHODS.includes(form.payment_method)
-        ? parseFloat(form.itbms_percentage) || 0
-        : null,
+      itbms_percentage: showItbms ? parseFloat(form.itbms_percentage) || 0 : null,
       is_invoiced: form.payment_method === "efectivo" ? form.is_invoiced : null,
     });
 
@@ -220,16 +221,6 @@ const Remuneraciones = () => {
                   onChange={(v) => setForm((f) => ({ ...f, payment_method: v, is_invoiced: v === "efectivo" ? f.is_invoiced : false }))}
                 />
               </div>
-              {form.payment_method && ITBMS_METHODS.includes(form.payment_method) && (
-                <div className="space-y-1.5">
-                  <Label>ITBMS (%)</Label>
-                  <Input
-                    type="number" min="0" max="100" step="0.5"
-                    value={form.itbms_percentage}
-                    onChange={(e) => setForm((f) => ({ ...f, itbms_percentage: e.target.value }))}
-                  />
-                </div>
-              )}
               {form.payment_method === "efectivo" && (
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -238,6 +229,16 @@ const Remuneraciones = () => {
                     onCheckedChange={(v) => setForm((f) => ({ ...f, is_invoiced: v === true }))}
                   />
                   <Label htmlFor="is_invoiced" className="font-normal cursor-pointer">Se factura</Label>
+                </div>
+              )}
+              {showItbms && (
+                <div className="space-y-1.5">
+                  <Label>ITBMS (%)</Label>
+                  <Input
+                    type="number" min="0" max="100" step="0.5"
+                    value={form.itbms_percentage}
+                    onChange={(e) => setForm((f) => ({ ...f, itbms_percentage: e.target.value }))}
+                  />
                 </div>
               )}
               <div className="space-y-1.5">
