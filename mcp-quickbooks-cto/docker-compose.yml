@@ -1,0 +1,20 @@
+name: mcp-quickbooks-cto
+
+services:
+  mcp:
+    build: .
+    image: mcp-quickbooks-cto:latest
+    container_name: mcp-quickbooks-cto
+    restart: unless-stopped
+    env_file:
+      - .env
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.mcp-quickbooks-cto.rule: "Host(`prosaludgold-api.plataformapty.cloud`) && PathPrefix(`/mcp/quickbooks-cto`)"
+      traefik.http.routers.mcp-quickbooks-cto.entrypoints: "websecure"
+      traefik.http.routers.mcp-quickbooks-cto.tls: "true"
+      traefik.http.routers.mcp-quickbooks-cto.tls.certresolver: "letsencrypt"
+      traefik.http.routers.mcp-quickbooks-cto.priority: "100"
+      traefik.http.middlewares.mcp-quickbooks-cto-strip.stripprefix.prefixes: "/mcp/quickbooks-cto"
+      traefik.http.routers.mcp-quickbooks-cto.middlewares: "mcp-quickbooks-cto-strip"
+      traefik.http.services.mcp-quickbooks-cto.loadbalancer.server.port: "3000"
