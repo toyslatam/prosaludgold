@@ -39,6 +39,7 @@ type LabOrderJoined = {
 export type CashEntryJoined = {
   id: string;
   patient_id: string | null;
+  doctor_id: string | null;
   description: string;
   amount: number;
   type: string;
@@ -48,6 +49,7 @@ export type CashEntryJoined = {
   created_at: string;
   updated_at: string;
   patients: { id: string; name: string } | null;
+  doctors: { id: string; name: string } | null;
   payment_status: "pagado" | "por_cobrar";
   qb_sales_receipt_id: string | null;
   qb_invoice_id: string | null;
@@ -282,7 +284,7 @@ export const useCashEntries = (date?: string) =>
     queryFn: async () => {
       let query = supabase
         .from("cash_entries")
-        .select("*, patients(id, name)")
+        .select("*, patients(id, name), doctors(id, name)")
         .order("date", { ascending: false })
         .order("created_at", { ascending: false });
       if (date) query = query.eq("date", date);
@@ -295,9 +297,14 @@ export const useCashEntries = (date?: string) =>
 export const useInsertCashEntry = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (entry: TablesInsert<"cash_entries">) => {
-      const { data, error } = await supabase
-        .from("cash_entries")
+    mutationFn: async (
+      entry: TablesInsert<"cash_entries"> & {
+        patient_id?: string | null;
+        doctor_id?: string | null;
+        category?: string | null;
+      }
+    ) => {
+      const { data, error } = await anyFrom("cash_entries")
         .insert(entry)
         .select()
         .single();

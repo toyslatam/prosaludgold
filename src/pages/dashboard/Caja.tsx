@@ -1,24 +1,44 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { useCashEntries, useInsertCashEntry, useSyncToQuickbooks, useQuickbooksConnection } from "@/hooks/useSupabase";
+import {
+  useCashEntries,
+  useInsertCashEntry,
+  useSyncToQuickbooks,
+  useQuickbooksConnection,
+  usePatients,
+  useDoctors,
+} from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { FilterCombobox } from "@/components/agenda/FilterCombobox";
 import { Plus, Printer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppConfig } from "@/contexts/AppConfigContext";
 import { generateCierreCajaPdf } from "@/lib/caja/generateCierreCajaPdf";
+import { GASTO_CATEGORIES } from "@/data/gastoCategories";
 
 type EntryForm = {
   type: "ingreso" | "egreso";
   description: string;
   amount: string;
   method: string;
+  patientId: string;
+  doctorId: string;
+  category: string;
 };
 
-const EMPTY_FORM: EntryForm = { type: "ingreso", description: "", amount: "", method: "efectivo" };
+const EMPTY_FORM: EntryForm = {
+  type: "ingreso",
+  description: "",
+  amount: "",
+  method: "efectivo",
+  patientId: "",
+  doctorId: "",
+  category: "",
+};
 const today = format(new Date(), "yyyy-MM-dd");
 
 const Caja = () => {
@@ -31,6 +51,8 @@ const Caja = () => {
   const syncToQuickbooks = useSyncToQuickbooks();
   const { data: qbConnection } = useQuickbooksConnection();
   const { clinicConfig } = useAppConfig();
+  const { data: patients = [] } = usePatients();
+  const { data: doctors = [] } = useDoctors();
 
   const shown = entries.filter((e) => !filterDate || e.date === filterDate);
   const ingresos = shown.filter((e) => e.type === "ingreso").reduce((s, e) => s + e.amount, 0);
@@ -50,6 +72,9 @@ const Caja = () => {
         amount,
         method: form.method || null,
         date: today,
+        patient_id: form.patientId || null,
+        doctor_id: form.doctorId || null,
+        category: form.type === "egreso" ? form.category || null : null,
       },
       {
         onSuccess: (created) => {
@@ -126,6 +151,45 @@ const Caja = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Paciente</Label>
+                    <FilterCombobox
+                      className="w-full"
+                      value={form.patientId || "all"}
+                      onChange={(v) => setForm((f) => ({ ...f, patientId: v === "all" ? "" : v }))}
+                      allLabel="Ninguno"
+                      placeholder="Ninguno"
+                      searchPlaceholder="Buscar paciente…"
+                      options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Doctor / colaborador</Label>
+                    <FilterCombobox
+                      className="w-full"
+                      value={form.doctorId || "all"}
+                      onChange={(v) => setForm((f) => ({ ...f, doctorId: v === "all" ? "" : v }))}
+                      allLabel="Ninguno"
+                      placeholder="Ninguno"
+                      searchPlaceholder="Buscar doctor…"
+                      options={doctors.map((d) => ({ value: d.id, label: d.name, sublabel: d.specialty }))}
+                    />
+                  </div>
+                </div>
+                {form.type === "egreso" && (
+                  <div className="space-y-1.5">
+                    <Label>Categoría de gasto</Label>
+                    <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona una categoría" /></SelectTrigger>
+                      <SelectContent>
+                        {GASTO_CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button type="submit" className="w-full" disabled={insert.isPending}>
                   {insert.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Registrando…</> : "Registrar"}
                 </Button>
@@ -201,17 +265,18 @@ const Caja = () => {
               <th className="text-left p-3 font-medium">Fecha</th>
               <th className="text-left p-3 font-medium">Descripción</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Paciente</th>
+              <th className="text-left p-3 font-medium hidden lg:table-cell">Doctor</th>
               <th className="text-left p-3 font-medium hidden md:table-cell">Medio de pago</th>
               <th className="text-right p-3 font-medium">Monto</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">
+              <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">
                 <Loader2 className="w-5 h-5 animate-spin inline mr-2" />Cargando movimientos…
               </td></tr>
             ) : shown.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">
+              <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">
                 No hay movimientos para esta fecha
               </td></tr>
             ) : (
@@ -221,6 +286,9 @@ const Caja = () => {
                   <td className="p-3">{entry.description}</td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">
                     {entry.patients?.name ?? "—"}
+                  </td>
+                  <td className="p-3 hidden lg:table-cell text-muted-foreground">
+                    {entry.doctors?.name ?? "—"}
                   </td>
                   <td className="p-3 hidden md:table-cell text-muted-foreground">{entry.method ?? "—"}</td>
                   <td className={`p-3 text-right font-semibold ${entry.type === "ingreso" ? "text-success" : "text-destructive"}`}>

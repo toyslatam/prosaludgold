@@ -8,9 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Loader2, Receipt, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
-
-const CATEGORIES = ["Materiales", "Laboratorio", "Servicios", "Equipos", "Administrativo", "Nómina", "Otro"] as const;
-type Category = typeof CATEGORIES[number];
+import { GASTO_CATEGORIES as CATEGORIES, type GastoCategory as Category } from "@/data/gastoCategories";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Materiales:    "bg-blue-500/10 text-blue-600 border-blue-500/20",
