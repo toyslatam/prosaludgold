@@ -44,13 +44,19 @@ async function patientsSource(): Promise<"patients" | "patients_clinical"> {
 /** vertical: filtra por módulo ("dental"/"medical"/"spa"); omite el filtro para "multi" o sin valor. */
 export async function getPatients(vertical?: string): Promise<Patient[]> {
   const source = await patientsSource();
-  let query = supabase.from(source).select("*").order("name");
-  if (vertical && vertical !== "multi") {
-    query = query.contains("modules_enabled", [vertical]);
+  const PAGE_SIZE = 1000;
+  const rows: Tables<"patients">[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase.from(source).select("*").order("name").range(from, from + PAGE_SIZE - 1);
+    if (vertical && vertical !== "multi") {
+      query = query.contains("modules_enabled", [vertical]);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    rows.push(...((data ?? []) as Tables<"patients">[]));
+    if (!data || data.length < PAGE_SIZE) break;
   }
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map(fromRow);
+  return rows.map(fromRow);
 }
 
 export async function getPatientById(id: string): Promise<Patient | undefined> {

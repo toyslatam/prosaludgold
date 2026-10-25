@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 import type { AppointmentWithDetails, AppointmentStatus } from "@/types/agenda";
 
 // ── Types for joined queries ──────────────────────────────────
@@ -121,13 +121,19 @@ export const usePatients = (vertical?: string) =>
   useQuery({
     queryKey: ["patients", vertical ?? "all"],
     queryFn: async () => {
-      let query = supabase.from("patients").select("*").order("name");
-      if (vertical && vertical !== "multi") {
-        query = query.contains("modules_enabled", [vertical]);
+      const PAGE_SIZE = 1000;
+      const rows: Tables<"patients">[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        let query = supabase.from("patients").select("*").order("name").range(from, from + PAGE_SIZE - 1);
+        if (vertical && vertical !== "multi") {
+          query = query.contains("modules_enabled", [vertical]);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        rows.push(...((data ?? []) as Tables<"patients">[]));
+        if (!data || data.length < PAGE_SIZE) break;
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      return rows;
     },
   });
 
